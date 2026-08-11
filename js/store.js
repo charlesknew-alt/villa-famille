@@ -119,6 +119,9 @@ const Store = {
   normalize() {
     const d = this.data;
     d.users = d.users || [];
+    d.users.forEach((u) => {
+      if (u && u.id === "u-admin" && !/^\d{4}$/.test(u.pinDisplay || "")) u.pinDisplay = "1232";
+    });
     d.pendingUsers = [];
     d.settings = d.settings || {};
     d.activity = d.activity || [];
@@ -322,7 +325,11 @@ const Store = {
   },
 
   exportJson() {
-    this.download("house.json", JSON.stringify(this.data, null, 2), "application/json");
+    const data = JSON.parse(JSON.stringify(this.data));
+    if (!Auth.isAdmin()) {
+      (data.users || []).forEach((u) => { delete u.pinDisplay; });
+    }
+    this.download("house.json", JSON.stringify(data, null, 2), "application/json");
   },
 
   exportCsvPack() {

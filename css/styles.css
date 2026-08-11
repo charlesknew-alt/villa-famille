@@ -466,6 +466,18 @@ a.place-card {
   display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap;
 }
 [data-theme="dark"] .dirty-bar { background: #3a3220; color: #f0d9a0; }
+.impersonate-bar { background: #e8d4c4; color: #5a3220; }
+[data-theme="dark"] .impersonate-bar { background: #4a3228; color: #f0d4c4; }
+.pin-plain {
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  margin: 6px 0 4px;
+}
+.pin-admin-row { align-items: center; }
+.pin-admin-row .actions { flex-wrap: wrap; justify-content: flex-end; }
 .empty { color: var(--muted); padding: 24px 0; }
 
 .highlights { grid-template-columns: repeat(3, 1fr); }

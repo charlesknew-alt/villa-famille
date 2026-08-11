@@ -1,6 +1,7 @@
 const Auth = {
   sessionKey: "tfh-user",
   lockKey: "tfh-lock",
+  returnKey: "tfh-return-admin",
   current: null,
 
   user() { return this.current; },
@@ -22,9 +23,41 @@ const Auth = {
     return user;
   },
 
+  impersonatingId() {
+    try { return sessionStorage.getItem(this.returnKey) || ""; }
+    catch (_) { return ""; }
+  },
+
+  isImpersonating() {
+    return !!this.impersonatingId();
+  },
+
+  openAs(user) {
+    if (!user || !user.id) return null;
+    if (!this.isAdmin() && !this.isImpersonating()) return null;
+    if (!this.impersonatingId() && this.current) {
+      try { sessionStorage.setItem(this.returnKey, this.current.id); }
+      catch (_) { /* private mode */ }
+    }
+    return this.setSession(user);
+  },
+
+  backToAdmin() {
+    const id = this.impersonatingId();
+    try { sessionStorage.removeItem(this.returnKey); }
+    catch (_) { /* private mode */ }
+    if (!id) return null;
+    const admin = (Store.data.users || []).find((u) => u.id === id) ||
+      (Store.data.users || []).find((u) => u.role === "admin");
+    if (!admin) return null;
+    return this.setSession(admin);
+  },
+
   logout() {
     this.current = null;
     localStorage.removeItem(this.sessionKey);
+    try { sessionStorage.removeItem(this.returnKey); }
+    catch (_) { /* private mode */ }
   },
 
   lockState() {

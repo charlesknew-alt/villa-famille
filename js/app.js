@@ -57,7 +57,7 @@ const App = {
     document.getElementById("login-screen").hidden = true;
     document.getElementById("app").hidden = false;
     const u = Auth.user();
-    document.getElementById("who-chip").textContent = u.name + " · " + u.role;
+    document.getElementById("who-chip").textContent = (Auth.isImpersonating() ? "As " : "") + u.name + " · " + u.role;
     this.syncSaveChip();
     this.route();
   },
@@ -208,6 +208,7 @@ const App = {
         role: "family",
         pinSalt: salt,
         pinHash: await CryptoUtil.hashPin(pin, salt),
+        pinDisplay: pin,
         createdAt: now,
         createdBy: "signup"
       };
@@ -263,11 +264,38 @@ const App = {
   afterRender() {
     const bar = document.getElementById("bar-save");
     if (bar) bar.onclick = () => this.openSave();
+    document.querySelectorAll("[data-back-admin]").forEach((b) => {
+      b.onclick = () => this.returnToAdmin();
+    });
     this.syncSaveChip();
   },
 
+  impersonateBar() {
+    if (!Auth.isImpersonating()) return "";
+    const u = Auth.user();
+    return '<div class="dirty-bar impersonate-bar"><span>You are in as <b>' + UI.esc(u ? u.name : "them") +
+      "</b>. Changes you make are theirs.</span>" +
+      '<button class="btn primary" type="button" data-back-admin>Back to admin</button></div>';
+  },
+
+  openAsUser(id) {
+    const person = (Store.data.users || []).find((u) => u.id === id);
+    if (!person) return UI.toast("That person is not here");
+    if (!Auth.openAs(person)) return UI.toast("Only admin can do that");
+    this.showApp();
+    UI.toast("Now in as " + person.name);
+  },
+
+  returnToAdmin() {
+    const admin = Auth.backToAdmin();
+    if (!admin) return UI.toast("Could not return to admin");
+    this.showApp();
+    location.hash = "settings";
+    UI.toast("Back as " + admin.name);
+  },
+
   head(title, sub, actions) {
-    return this.dirtyBar() + '<div class="page-head"><div><h2>' + UI.esc(title) + "</h2><p>" + UI.esc(sub) +
+    return this.dirtyBar() + this.impersonateBar() + '<div class="page-head"><div><h2>' + UI.esc(title) + "</h2><p>" + UI.esc(sub) +
       '</p></div><div class="actions">' + (actions || "") + "</div></div>";
   },
 
@@ -1534,11 +1562,21 @@ const App = {
   },
 
   pinAdmin() {
-    return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3><p class="muted">PINs are stored as SHA-256 + salt. Raw PINs are never saved. Same name cannot be added twice.</p>' +
-      Store.data.users.map((u) => "<div class='row'><div><b>" + UI.esc(u.name) + "</b><div class='muted'>" + u.role +
-        "</div><label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
-        this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
-        (u.id !== Auth.user().id ? "<button class='text-btn' data-delu='" + u.id + "'>Remove</button>" : "") + "</div>").join("") +
+    const me = Auth.user();
+    return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3>' +
+      '<p class="muted">Name, their 4-digit PIN, and role. Open as them to edit their bookings. Same name cannot be added twice.</p>' +
+      Store.data.users.map((u) => {
+        const pin = /^\d{4}$/.test(u.pinDisplay || "") ? u.pinDisplay : "Not saved yet";
+        return "<div class='row pin-admin-row'><div><b>" + UI.esc(u.name) + "</b>" +
+          '<div class="pin-plain">' + UI.esc(pin) + "</div>" +
+          "<div class='muted'>" + UI.esc(u.role) + "</div>" +
+          "<label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
+          this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
+          "<span class='actions'>" +
+          (u.id !== me.id ? "<button class='btn primary' type='button' data-openas='" + u.id + "'>Open as them</button>" : "") +
+          (u.id !== me.id ? "<button class='text-btn' type='button' data-delu='" + u.id + "'>Remove</button>" : "") +
+          "</span></div>";
+      }).join("") +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
       '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn">Add person</button></form></div>';
   },
@@ -1554,7 +1592,7 @@ const App = {
       if (!/^\d{4}$/.test(pin)) return UI.toast("PIN must be 4 digits");
       if (this.nameTaken(name, "")) return UI.toast("That name is already registered.");
       const salt = CryptoUtil.randomSalt();
-      const person = { id: CryptoUtil.uid("u"), name: name, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id };
+      const person = { id: CryptoUtil.uid("u"), name: name, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), pinDisplay: pin, createdAt: new Date().toISOString(), createdBy: Auth.user().id };
       Store.data.users.push(person);
       Store.addOwner(person);
       Store.log("create", "user", person.id, name);
@@ -1562,6 +1600,9 @@ const App = {
       UI.toast("Person added");
       this.renderSettings();
     };
+    document.querySelectorAll("[data-openas]").forEach((b) => {
+      b.onclick = () => this.openAsUser(b.getAttribute("data-openas"));
+    });
     document.querySelectorAll("[data-delu]").forEach((b) => b.onclick = () => {
       if (!UI.confirm("Remove this person?")) return;
       const id = b.getAttribute("data-delu");

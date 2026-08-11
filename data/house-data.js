@@ -1,4 +1,4 @@
-window.HOUSE_DATA = {
+﻿window.HOUSE_DATA = {
   "version": 1,
   "house": {
     "name": "The Family House",
@@ -14,6 +14,7 @@ window.HOUSE_DATA = {
       "role": "admin",
       "pinSalt": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
       "pinHash": "335ab29f16fd96bdc2b5c75cc7b4841799b0b0a369dd2f3f83f06b57acfc2e9f",
+      "pinDisplay": "1232",
       "createdAt": "2025-01-10T10:00:00.000Z",
       "createdBy": "u-admin"
     }

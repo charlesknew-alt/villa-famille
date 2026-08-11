@@ -37,7 +37,7 @@ If a double-click does not load the house data, open a terminal in this folder a
 
 There is one house admin PIN to start. New people tap **Create your PIN** on the login screen (name, surname, 4-digit PIN, and the house verify code). They become a family member at once and are signed in. The same first + last name cannot be registered twice. The house code is not shown on the login screen.
 
-Admin can also **Add person** in Settings. Same name rule. PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never saved. The login screen does not list family PINs.
+Admin can also **Add person** in Settings. Same name rule. Login uses a **SHA-256 + salt** hash. Admin Settings also shows each person’s 4-digit PIN and can **Open as them**. Family and guests never see other people’s PINs.
 
 ## What is in the app
 
