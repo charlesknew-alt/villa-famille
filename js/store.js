@@ -341,7 +341,28 @@ window.Store = {
     booking.status = "booked";
     booking.confirmedAt = new Date().toISOString();
     booking.updatedAt = booking.confirmedAt;
+    booking.confirmedBy = (typeof Auth !== "undefined" && Auth.user()) ? Auth.user().id : (booking.confirmedBy || "");
     return booking;
+  },
+
+  unconfirmBooking(booking) {
+    if (!booking || booking.status === "cancelled") return booking;
+    booking.status = "pending";
+    booking.confirmedAt = "";
+    booking.updatedAt = new Date().toISOString();
+    booking.pendingSince = booking.updatedAt;
+    return booking;
+  },
+
+  deleteBooking(id) {
+    if (!this.data || !id) return null;
+    const list = this.data.bookings || [];
+    const i = list.findIndex((b) => b && b.id === id);
+    if (i < 0) return null;
+    const removed = list[i];
+    list.splice(i, 1);
+    this.data.bookings = list;
+    return removed;
   },
 
   matchUserByPin(pin, users) {

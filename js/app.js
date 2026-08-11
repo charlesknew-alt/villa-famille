@@ -957,16 +957,26 @@ window.App = {
     if (Auth.canEdit()) this.bookingForm({ arrival: iso, departure: UI.addDays(iso, 7) });
   },
 
+  canManageStay(b) {
+    if (!b || !Auth.canEdit()) return false;
+    if (Auth.isAdmin()) return true;
+    return !!(Auth.user() && Auth.user().id === b.createdBy);
+  },
+
   openBooking(id) {
     const b = Store.data.bookings.find((x) => x.id === id);
     if (!b) return;
     const rec = (Store.data.checklistRecords || []).find((r) => r.bookingId === b.id);
+    const admin = Auth.isAdmin();
+    const manage = this.canManageStay(b);
     const pendingNote = b.status === "pending"
       ? "<p class='holiday-banner soft'>Pending for the first 3 days · " + Store.pendingDaysLeft(b) +
-        " day(s) left until this stay is confirmed.</p>"
+        " day(s) left until this stay is confirmed." +
+        (admin ? " As house admin you can confirm, edit, cancel, or delete it anytime." : "") +
+        "</p>"
       : "";
-    const canConfirm = Auth.canEdit() && b.status === "pending" &&
-      (Auth.isAdmin() || (Auth.user() && Auth.user().id === b.createdBy));
+    const canConfirm = manage && b.status === "pending";
+    const canUnconfirm = admin && b.status === "booked";
     UI.modal("Stay · " + UI.fmt(b.arrival),
       this.holidayBannerHtml(b.arrival, b.departure) + pendingNote +
       "<p><b>" + UI.esc(b.guests || "—") + "</b>" +
@@ -975,9 +985,11 @@ window.App = {
       "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + this.stayStatusLabel(b) + "</p>" +
       (rec ? "<p>Departure checklist completed " + UI.fmtTime(rec.completedAt) + ".</p>" : "<p><a href='#house'>Open departure checklist</a></p>"),
       '<div class="actions">' +
-        (Auth.canEdit() && b.status !== "cancelled" ? '<button class="btn" id="ed-b">Edit</button>' : "") +
+        (manage && b.status !== "cancelled" ? '<button class="btn" id="ed-b">Edit</button>' : "") +
         (canConfirm ? '<button class="btn primary" id="confirm-b">Confirm now</button>' : "") +
-        (Auth.canEdit() && (b.status === "booked" || b.status === "pending") ? '<button class="btn danger" id="cx-b">Cancel stay</button>' : "") +
+        (canUnconfirm ? '<button class="btn" id="pending-b">Make pending</button>' : "") +
+        (manage && (b.status === "booked" || b.status === "pending") ? '<button class="btn danger" id="cx-b">Cancel stay</button>' : "") +
+        (admin && b.status !== "cancelled" ? '<button class="btn danger" id="del-b">Delete forever</button>' : "") +
         "</div>");
     const ed = document.getElementById("ed-b");
     if (ed) ed.onclick = () => this.bookingForm(b);
@@ -988,6 +1000,16 @@ window.App = {
       Store.save();
       UI.closeModal();
       UI.toast("Stay confirmed");
+      this.renderCalendar();
+    };
+    const pend = document.getElementById("pending-b");
+    if (pend) pend.onclick = () => {
+      if (!UI.confirm("Put this stay back to pending?")) return;
+      Store.unconfirmBooking(b);
+      Store.log("unconfirm", "booking", b.id, b.guests || "stay pending again");
+      Store.save();
+      UI.closeModal();
+      UI.toast("Stay set back to pending");
       this.renderCalendar();
     };
     const cx = document.getElementById("cx-b");
@@ -1002,10 +1024,33 @@ window.App = {
       UI.toast("Stay cancelled");
       this.renderCalendar();
     };
+    const del = document.getElementById("del-b");
+    if (del) del.onclick = () => {
+      if (!UI.confirm("Delete this stay forever? This cannot be undone.")) return;
+      Store.deleteBooking(b.id);
+      Store.log("delete", "booking", b.id, b.guests || "stay deleted");
+      Store.save();
+      UI.closeModal();
+      UI.toast("Stay deleted");
+      this.renderCalendar();
+    };
   },
 
   bookingForm(existing) {
     const b = existing || { arrival: UI.today(), departure: UI.addDays(UI.today(), 7), guestCount: 2, guests: "", notes: "", status: "pending" };
+    if (existing && existing.id && !this.canManageStay(existing)) {
+      return UI.toast("Only the person who booked it, or the house admin, can change this stay.");
+    }
+    const admin = Auth.isAdmin();
+    const statusNow = b.status === "booked" ? "booked" : (b.status === "blocked" ? "blocked" : "pending");
+    const statusField = admin
+      ? '<label class="field"><span>Status (admin override)</span><select name="status">' +
+        '<option value="pending"' + (statusNow === "pending" ? " selected" : "") + ">Pending (3-day hold)</option>" +
+        '<option value="booked"' + (statusNow === "booked" ? " selected" : "") + ">Confirmed</option>" +
+        '<option value="blocked"' + (statusNow === "blocked" ? " selected" : "") + ">Blocked / house hold</option>" +
+        "</select></label>" +
+        "<p class='muted'>House admin can skip the 3-day wait, put a stay back to pending, or block dates.</p>"
+      : '<input type="hidden" name="status" value="' + UI.esc(statusNow) + '">';
     const modal = UI.modal(existing && existing.id ? "Edit stay" : "New stay",
       '<form id="bk-form" class="stay-form">' +
         '<div class="stay-form-body">' +
@@ -1023,8 +1068,8 @@ window.App = {
         '<label class="field"><span>Who is staying</span><input name="guests" value="' + UI.esc(b.guests || "") + '" placeholder="Names"></label>' +
         '<label class="field"><span>Guest count</span><input name="guestCount" type="number" min="0" value="' + (b.guestCount || 0) + '"></label>' +
         '<label class="field"><span>Notes</span><textarea name="notes" rows="3">' + UI.esc(b.notes || "") + "</textarea></label>" +
-        '<input type="hidden" name="status" value="booked">' +
-        '<div id="bk-ack-slot">' + this.holidayAckHtml(b.arrival, b.departure, "booked") + "</div>" +
+        statusField +
+        '<div id="bk-ack-slot">' + this.holidayAckHtml(b.arrival, b.departure, statusNow) + "</div>" +
         "</div>" +
         '<div class="stay-form-foot"><div id="bk-warn" class="pin-error" hidden></div>' +
         '<button class="btn primary stay-save" type="submit">Save stay</button></div></form>');
@@ -1168,6 +1213,15 @@ window.App = {
       const f = e.target;
       const saveBtn = form.querySelector(".stay-save");
       const isNew = !b.id;
+      let status;
+      if (Auth.isAdmin()) {
+        status = UI.val(f, "status") || "pending";
+        if (["pending", "booked", "blocked"].indexOf(status) < 0) status = "pending";
+      } else if (isNew) {
+        status = "pending";
+      } else {
+        status = b.status === "cancelled" ? "pending" : (b.status || "pending");
+      }
       const next = {
         id: b.id || CryptoUtil.uid("b"),
         arrival: UI.val(f, "arrival"),
@@ -1175,14 +1229,19 @@ window.App = {
         guests: UI.val(f, "guests"),
         guestCount: Number(UI.val(f, "guestCount") || 0),
         notes: UI.val(f, "notes"),
-        status: isNew ? "pending" : (b.status === "cancelled" ? "pending" : (b.status || "pending")),
+        status: status,
         createdBy: b.createdBy || Auth.user().id,
         createdAt: b.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         familyBranch: b.familyBranch || Store.familyBranch(Auth.user()) || "",
         confirmedAt: b.confirmedAt || ""
       };
-      if (next.status === "booked" && !next.confirmedAt) next.confirmedAt = next.updatedAt;
+      if (next.status === "booked") {
+        next.confirmedAt = next.confirmedAt || next.updatedAt;
+        next.confirmedBy = Auth.user().id;
+      } else if (next.status === "pending") {
+        next.confirmedAt = "";
+      }
       if (!next.arrival || !next.departure || next.departure <= next.arrival) {
         document.getElementById("bk-warn").hidden = false;
         document.getElementById("bk-warn").textContent = "Arrival must be before you leave. Please pick a later departure day.";
@@ -1217,12 +1276,12 @@ window.App = {
         }
         const synced = await Store.pushRemote();
         UI.closeModal();
-        const pendingMsg = next.status === "pending"
+        const savedMsg = next.status === "pending"
           ? "Stay saved as pending — it becomes confirmed after 3 days."
-          : "Stay saved";
+          : (next.status === "blocked" ? "Dates blocked" : "Stay saved as confirmed");
         UI.toast(synced
-          ? pendingMsg
-          : pendingMsg + " Saved on this computer only — the phone will not see it yet.");
+          ? savedMsg
+          : savedMsg + " Saved on this computer only — the phone will not see it yet.");
         this.renderCalendar();
       } finally {
         if (saveBtn) saveBtn.disabled = false;
