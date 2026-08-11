@@ -1,4 +1,4 @@
-window.TFH_VERSION = "20260811s";
+window.TFH_VERSION = "20260811t";
 (function () {
   var key = "tfh-version";
   var flag = "tfh-reloaded";

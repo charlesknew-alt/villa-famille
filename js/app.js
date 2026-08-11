@@ -270,6 +270,7 @@ window.App = {
   async submitSignup(form) {
     const first = UI.val(form, "firstName").trim();
     const last = UI.val(form, "lastName").trim();
+    const email = UI.val(form, "email").trim().toLowerCase();
     const pin = UI.val(form, "pin").replace(/\D/g, "");
     const houseCode = UI.val(form, "houseCode").replace(/\D/g, "");
     const err = document.getElementById("signup-error");
@@ -281,6 +282,7 @@ window.App = {
     if (btn) btn.disabled = true;
     try {
       if (!first || !last) return showErr("Please enter your name and surname.");
+      if (!Notify.validEmail(email)) return showErr("Please enter a real email address.");
       const familyBranch = UI.val(form, "familyBranch");
       if (Store.familyBranches().indexOf(familyBranch) < 0) return showErr("Please choose which part of the family.");
       if (!/^\d{4}$/.test(pin)) return showErr("PIN must be 4 digits.");
@@ -293,6 +295,8 @@ window.App = {
         firstName: first,
         lastName: last,
         name: first + " " + last,
+        email,
+        emailNotify: "off",
         familyBranch,
         role: "family",
         pinSalt: salt,
@@ -782,11 +786,12 @@ window.App = {
     if (!this.cal.cursor) this.cal.cursor = UI.today().slice(0, 7) + "-01";
     const mode = this.cal.mode;
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Calendar", "Green free · Red booked · Gold flag = school holiday",
+    Store.promotePendingBookings();
+    view.innerHTML = this.head("Calendar", "Green free · Amber pending (first 3 days) · Red confirmed · Gold flag = school holiday",
       (Auth.canEdit() ? '<button class="btn primary" id="add-stay" type="button">Add stay</button>' : "")) +
       this.holidayDashNote() +
       '<div id="cal-busy">' + this.calBusyBanner() + "</div>" +
-      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
+      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch pending"></i>Pending</span><span><i class="swatch booked"></i>Confirmed</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
       '<div class="filters"><div class="seg">' +
         ["month","week","list"].map((m) => '<button type="button" data-mode="' + m + '" class="' + (mode === m ? "on" : "") + '">' + m[0].toUpperCase() + m.slice(1) + "</button>").join("") +
       '</div><div class="actions"><button class="btn ghost" id="cal-prev" type="button">Back</button><button class="btn ghost" id="cal-today" type="button">Today</button><button class="btn ghost" id="cal-next" type="button">Next</button></div></div>' +
@@ -827,7 +832,7 @@ window.App = {
     const all = (Store.data.bookings || []).slice().sort((a, b) => b.arrival.localeCompare(a.arrival));
     hist.innerHTML = all.length ? '<table class="table"><tr><th>Dates</th><th>Who</th><th>Status</th><th></th></tr>' +
       all.map((b) => "<tr><td>" + UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + "</td><td>" + UI.esc(b.guests || b.notes || "—") +
-        "</td><td><span class='chip " + (b.status === "cancelled" ? "rejected" : "done") + "'>" + (b.status === "blocked" ? "booked" : b.status) +
+        "</td><td><span class='chip " + this.stayChipClass(b) + "'>" + this.stayStatusLabel(b) +
         "</span></td><td><button class='text-btn' data-open='" + b.id + "'>Open</button></td></tr>").join("") + "</table>"
       : "<p class='empty'>No stays yet.</p>";
     body.querySelectorAll("[data-day]").forEach((el) => el.onclick = () => this.onDay(el.getAttribute("data-day")));
@@ -872,13 +877,31 @@ window.App = {
         '" data-day="' + iso + '"' + (opts.pick ? ' data-pick-day="' + iso + '"' : "") + "><b>" + day +
         (hol ? ' <span class="cal-flag" title="' + UI.esc(hol.label) + '">H</span>' : "") + "</b>" +
         (opts.pick ? "" : stays.map((b) => {
-          const text = String(b.guests || b.notes || b.status || "");
+          const text = (b.status === "pending" ? "Pending · " : "") + String(b.guests || b.notes || b.status || "");
           return '<a class="cal-pill" data-open="' + b.id + '" title="' + UI.esc(text) + '">' +
             UI.esc(text.slice(0, 18)) + "</a>";
         }).join("")) +
         "</div>";
     }
     return html + "</div></section>";
+  },
+
+  stayStatusLabel(b) {
+    if (!b) return "";
+    if (b.status === "cancelled") return "cancelled";
+    if (b.status === "blocked") return "booked";
+    if (b.status === "pending") {
+      const days = Store.pendingDaysLeft(b);
+      return days ? ("pending · " + days + "d left") : "pending";
+    }
+    return "confirmed";
+  },
+
+  stayChipClass(b) {
+    if (!b) return "rejected";
+    if (b.status === "cancelled") return "rejected";
+    if (b.status === "pending") return "progress";
+    return "done";
   },
 
   calWeek() {
@@ -938,19 +961,35 @@ window.App = {
     const b = Store.data.bookings.find((x) => x.id === id);
     if (!b) return;
     const rec = (Store.data.checklistRecords || []).find((r) => r.bookingId === b.id);
+    const pendingNote = b.status === "pending"
+      ? "<p class='holiday-banner soft'>Pending for the first 3 days · " + Store.pendingDaysLeft(b) +
+        " day(s) left until this stay is confirmed.</p>"
+      : "";
+    const canConfirm = Auth.canEdit() && b.status === "pending" &&
+      (Auth.isAdmin() || (Auth.user() && Auth.user().id === b.createdBy));
     UI.modal("Stay · " + UI.fmt(b.arrival),
-      this.holidayBannerHtml(b.arrival, b.departure) +
+      this.holidayBannerHtml(b.arrival, b.departure) + pendingNote +
       "<p><b>" + UI.esc(b.guests || "—") + "</b>" +
       (this.familyLine(b) ? "<div class='muted'>" + UI.esc(this.familyLine(b)) + "</div>" : "") +
       "</p><p>" + UI.fmt(b.arrival) + " → " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests</p>" +
-      "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + (b.status === "blocked" ? "booked" : b.status) + "</p>" +
+      "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + this.stayStatusLabel(b) + "</p>" +
       (rec ? "<p>Departure checklist completed " + UI.fmtTime(rec.completedAt) + ".</p>" : "<p><a href='#house'>Open departure checklist</a></p>"),
       '<div class="actions">' +
         (Auth.canEdit() && b.status !== "cancelled" ? '<button class="btn" id="ed-b">Edit</button>' : "") +
-        (Auth.canEdit() && b.status === "booked" ? '<button class="btn danger" id="cx-b">Cancel stay</button>' : "") +
+        (canConfirm ? '<button class="btn primary" id="confirm-b">Confirm now</button>' : "") +
+        (Auth.canEdit() && (b.status === "booked" || b.status === "pending") ? '<button class="btn danger" id="cx-b">Cancel stay</button>' : "") +
         "</div>");
     const ed = document.getElementById("ed-b");
     if (ed) ed.onclick = () => this.bookingForm(b);
+    const conf = document.getElementById("confirm-b");
+    if (conf) conf.onclick = () => {
+      Store.confirmBooking(b);
+      Store.log("confirm", "booking", b.id, b.guests || "stay confirmed");
+      Store.save();
+      UI.closeModal();
+      UI.toast("Stay confirmed");
+      this.renderCalendar();
+    };
     const cx = document.getElementById("cx-b");
     if (cx) cx.onclick = () => {
       if (!UI.confirm("Cancel this stay?")) return;
@@ -966,7 +1005,7 @@ window.App = {
   },
 
   bookingForm(existing) {
-    const b = existing || { arrival: UI.today(), departure: UI.addDays(UI.today(), 7), guestCount: 2, guests: "", notes: "", status: "booked" };
+    const b = existing || { arrival: UI.today(), departure: UI.addDays(UI.today(), 7), guestCount: 2, guests: "", notes: "", status: "pending" };
     const modal = UI.modal(existing && existing.id ? "Edit stay" : "New stay",
       '<form id="bk-form" class="stay-form">' +
         '<div class="stay-form-body">' +
@@ -1128,6 +1167,7 @@ window.App = {
       e.preventDefault();
       const f = e.target;
       const saveBtn = form.querySelector(".stay-save");
+      const isNew = !b.id;
       const next = {
         id: b.id || CryptoUtil.uid("b"),
         arrival: UI.val(f, "arrival"),
@@ -1135,12 +1175,14 @@ window.App = {
         guests: UI.val(f, "guests"),
         guestCount: Number(UI.val(f, "guestCount") || 0),
         notes: UI.val(f, "notes"),
-        status: "booked",
+        status: isNew ? "pending" : (b.status === "cancelled" ? "pending" : (b.status || "pending")),
         createdBy: b.createdBy || Auth.user().id,
         createdAt: b.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        familyBranch: b.familyBranch || Store.familyBranch(Auth.user()) || ""
+        familyBranch: b.familyBranch || Store.familyBranch(Auth.user()) || "",
+        confirmedAt: b.confirmedAt || ""
       };
+      if (next.status === "booked" && !next.confirmedAt) next.confirmedAt = next.updatedAt;
       if (!next.arrival || !next.departure || next.departure <= next.arrival) {
         document.getElementById("bk-warn").hidden = false;
         document.getElementById("bk-warn").textContent = "Arrival must be before you leave. Please pick a later departure day.";
@@ -1170,9 +1212,17 @@ window.App = {
       if (saveBtn) saveBtn.disabled = true;
       try {
         Store.save();
+        if (isNew && window.Notify) {
+          try { await Notify.notifyBooking(next); Store.save(); } catch (_) { /* offline */ }
+        }
         const synced = await Store.pushRemote();
         UI.closeModal();
-        UI.toast(synced ? "Stay saved" : "Stay saved on this computer only — the phone will not see it yet. Check your connection and tap Save stay again.");
+        const pendingMsg = next.status === "pending"
+          ? "Stay saved as pending — it becomes confirmed after 3 days."
+          : "Stay saved";
+        UI.toast(synced
+          ? pendingMsg
+          : pendingMsg + " Saved on this computer only — the phone will not see it yet.");
         this.renderCalendar();
       } finally {
         if (saveBtn) saveBtn.disabled = false;
@@ -1924,6 +1974,7 @@ window.App = {
     const cloudStays = ((Store.data && Store.data.bookings) || []).filter((b) => b && b.status !== "cancelled").length;
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", admin ? "Family PINs, phone sync, and backup" : "Your settings") +
+      this.emailAlertsCard() +
       (admin ? this.pinAdmin() + this.houseCodeNote() : "") +
       (admin ? '<div class="card" style="margin-top:16px"><h3>Share to phones</h3>' +
       '<p>House Admin is in the website code, so it works everywhere. Family PINs and stays only reach a phone after this computer publishes them to family save.</p>' +
@@ -1998,6 +2049,7 @@ window.App = {
         UI.toast("Saved to GitHub");
       } catch (err) { UI.toast(err.message); }
     };
+    this.bindEmailAlerts();
     this.bindPinAdmin();
     this.bindSchoolSettings();
     this.afterRender();
@@ -2008,6 +2060,55 @@ window.App = {
     } else if (admin && this.params.id === "pins") {
       this.scrollToPin("family-pins");
     }
+  },
+
+  emailNotifyOptions(selected) {
+    const cur = selected || "off";
+    return [
+      ["off", "Not at all"],
+      ["immediate", "Straight away"],
+      ["every3days", "Every 3 days"],
+      ["weekly", "Once a week"]
+    ].map((opt) => "<option value='" + opt[0] + "'" + (cur === opt[0] ? " selected" : "") + ">" + opt[1] + "</option>").join("");
+  },
+
+  emailAlertsCard() {
+    const me = Auth.user() || {};
+    return '<div class="card" style="margin-top:16px" id="email-alerts">' +
+      "<h3>Booking emails</h3>" +
+      "<p>Get an email when someone books the house. New stays stay pending for 3 days, then become confirmed.</p>" +
+      '<form id="email-alerts-form">' +
+      '<label class="field"><span>Your email</span><input name="email" type="email" autocomplete="email" required value="' + UI.esc(me.email || "") + '" placeholder="you@example.com"></label>' +
+      '<label class="field"><span>When should we email you?</span><select name="emailNotify">' + this.emailNotifyOptions(me.emailNotify || "off") + "</select></label>" +
+      '<button class="btn primary" type="submit">Save email alerts</button></form>' +
+      (Auth.isAdmin()
+        ? "<p class='muted' style='margin-top:12px'>Emails send through EmailJS. Put your public key, service id and template id in <b>data/config.json</b> under <b>emailjs</b>. Until that is set, preferences still save but no message goes out.</p>"
+        : "") +
+      "</div>";
+  },
+
+  bindEmailAlerts() {
+    const form = document.getElementById("email-alerts-form");
+    if (!form) return;
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const me = Auth.user();
+      if (!me) return;
+      const email = UI.val(form, "email").trim().toLowerCase();
+      const emailNotify = UI.val(form, "emailNotify") || "off";
+      if (!Notify.validEmail(email)) return UI.toast("Please enter a real email address.");
+      me.email = email;
+      me.emailNotify = emailNotify;
+      me.updatedAt = new Date().toISOString();
+      Store.rememberUser(me);
+      Auth.setSession(me);
+      Store.save();
+      const synced = await Store.pushRemote();
+      UI.toast(synced
+        ? (emailNotify === "off" ? "Email saved · alerts off" : "Email alerts saved")
+        : "Saved on this device only");
+      this.renderSettings();
+    };
   },
 
   schoolOptions(selected) {
@@ -2145,6 +2246,7 @@ window.App = {
       '<div class="pin-add-box"><h3 class="pin-family-head">Add a person</h3>' +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
       '<label class="field"><span>Which part of the family?</span><select name="familyBranch" required>' + this.familyOptions("") + "</select></label>" +
+      '<label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>' +
       '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn primary">Add person</button></form></div></div>';
   },
 
@@ -2155,13 +2257,28 @@ window.App = {
       e.preventDefault();
       const pin = UI.val(f, "pin").replace(/\D/g, "");
       const name = UI.val(f, "name").trim();
+      const email = UI.val(f, "email").trim().toLowerCase();
       const familyBranch = UI.val(f, "familyBranch");
       if (!name) return UI.toast("Please enter a name");
+      if (!Notify.validEmail(email)) return UI.toast("Please enter a real email address.");
       if (Store.familyBranches().indexOf(familyBranch) < 0) return UI.toast("Please choose which part of the family.");
       if (!/^\d{4}$/.test(pin)) return UI.toast("PIN must be 4 digits");
       if (this.nameTaken(name, "")) return UI.toast("That name is already registered.");
       const salt = CryptoUtil.randomSalt();
-      const person = { id: CryptoUtil.uid("u"), name: name, familyBranch, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), pinDisplay: pin, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: Auth.user().id };
+      const person = {
+        id: CryptoUtil.uid("u"),
+        name: name,
+        email,
+        emailNotify: "off",
+        familyBranch,
+        role: UI.val(f, "role"),
+        pinSalt: salt,
+        pinHash: await CryptoUtil.hashPin(pin, salt),
+        pinDisplay: pin,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: Auth.user().id
+      };
       Store.rememberUser(person);
       Store.addOwner(person);
       Store.log("create", "user", person.id, name);
