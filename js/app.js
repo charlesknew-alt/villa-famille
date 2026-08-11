@@ -1,4 +1,4 @@
-const App = {
+window.App = {
   view: "dashboard",
   params: {},
   houseTab: "guide",
@@ -1914,15 +1914,22 @@ const App = {
     if (Auth.isAdmin()) await Store.pullRemote();
     const acts = Store.data.activity.slice(0, 40);
     const admin = Auth.isAdmin();
+    const cloudPeople = (Store._remoteUsers || []).filter((u) => u && u.id && u.id !== "u-admin").length;
+    const cloudStays = ((Store.data && Store.data.bookings) || []).filter((b) => b && b.status !== "cancelled").length;
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Settings", admin ? "Family PINs, backup, and activity" : "Your settings") +
+    view.innerHTML = this.head("Settings", admin ? "Family PINs, phone sync, and backup" : "Your settings") +
       (admin ? this.pinAdmin() + this.houseCodeNote() : "") +
+      (admin ? '<div class="card" style="margin-top:16px"><h3>Share to phones</h3>' +
+      '<p>House Admin is in the website code, so it works everywhere. Family PINs and stays only reach a phone after this computer publishes them to family save.</p>' +
+      '<p id="cloud-sync-detail" class="muted">Cloud right now: ' + cloudPeople + ' family people on this device · ' + cloudStays + ' stays.</p>' +
+      '<div class="actions"><button class="btn primary" id="push-phones">Publish PINs &amp; stays to phones</button>' +
+      '<button class="btn" id="pull-phones">Refresh from family save</button></div></div>' : "") +
       '<div class="card" style="margin-top:16px"><h3>One house, one address</h3>' +
       '<p>Calendar, flights, PINs and maintenance are <b>one website</b>: <a href="https://france.directestates.co.uk">france.directestates.co.uk</a>.</p>' +
       (admin ? "" : "<p>Your dates and PIN save on their own. You do not need GitHub.</p>") + "</div>" +
       (admin ? '<div class="card" style="margin-top:16px"><h3>How this runs, and where the calendar lives</h3>' +
       '<p>There is no server on this PC. <b>index.html</b> is a website file — open it in a browser. The GitHub page is only the code locker, not the live house.</p>' +
-      '<p>The real calendar, bookings, people, and the rest live in <b>data/house.json</b> on GitHub. While you use the site, new bookings first save as a <b>draft in this browser</b>. Then download that file and put it back on GitHub so the family at home sees the same dates. Spreadsheet copies are in <b>data/csv/</b>.</p>' +
+      '<p>Family PINs and new stays sync through family save (for phones). A full backup still lives in <b>data/house.json</b> — download it and put it back on GitHub when you want the code locker updated too.</p>' +
       '<div class="actions"><button class="btn primary" id="dl-json">Download house.json</button><button class="btn" id="dl-csv">Download CSVs</button><label class="btn">Restore JSON<input type="file" id="up-json" accept="application/json" hidden></label></div></div>' +
       '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille" value="' + UI.esc((Store.ghCreds() || {}).repo || "") + '"></label>' +
       '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off" placeholder="' + ((Store.ghCreds() || {}).token ? "Token saved in this browser" : "") + '"></label><button class="btn">Save to GitHub</button></form></div>' : "") +
@@ -1931,6 +1938,33 @@ const App = {
       '<div class="card" style="margin-top:16px"><h3>Activity</h3>' +
       acts.map((a) => "<div class='row'><div><b>" + UI.esc(a.action) + "</b> " + UI.esc(a.entity) + "<div class='muted'>" + UI.esc(a.detail) + " · " + UI.esc(Store.userName(a.userId)) + "</div></div><span class='muted'>" + UI.fmtTime(a.at) + "</span></div>").join("") +
       "</div>";
+    const pushPhones = document.getElementById("push-phones");
+    if (pushPhones) pushPhones.onclick = async () => {
+      pushPhones.disabled = true;
+      try {
+        const ok = await Store.pushRemote();
+        const remote = await FamilySync.pull();
+        const people = (remote && remote.users || []).filter((u) => u && u.id && u.id !== "u-admin").length;
+        const stays = (remote && remote.bookings || []).filter((b) => b && b.status !== "cancelled").length;
+        UI.toast(ok
+          ? "Published to phones · " + people + " people · " + stays + " stays"
+          : "Could not publish yet" + (FamilySync.lastError ? " (" + FamilySync.lastError + ")" : ""));
+        this.renderSettings();
+      } finally {
+        pushPhones.disabled = false;
+      }
+    };
+    const pullPhones = document.getElementById("pull-phones");
+    if (pullPhones) pullPhones.onclick = async () => {
+      pullPhones.disabled = true;
+      try {
+        await Store.pullRemote();
+        UI.toast("Refreshed from family save");
+        this.renderSettings();
+      } finally {
+        pullPhones.disabled = false;
+      }
+    };
     const dlJson = document.getElementById("dl-json");
     if (dlJson) dlJson.onclick = () => Store.exportJson();
     const dlCsv = document.getElementById("dl-csv");
@@ -1940,6 +1974,7 @@ const App = {
       const f = e.target.files[0];
       if (!f) return;
       Store.importJson(JSON.parse(await f.text()));
+      await Store.pushRemote();
       UI.toast("Data restored");
       this.renderSettings();
     };
@@ -2170,7 +2205,7 @@ const App = {
   }
 };
 
-window.App = App;
+var App = window.App;
 
 document.addEventListener("DOMContentLoaded", () => {
   App.init().catch((err) => {

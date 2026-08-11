@@ -1,4 +1,4 @@
-const Store = {
+window.Store = {
   key: "tfh-draft-v3",
   usersKey: "tfh-users",
   removedKey: "tfh-removed",
@@ -282,17 +282,9 @@ const Store = {
       this.data.settings.houseCodeSalt = repoHouse.salt;
       this.data.settings.houseCodeHash = repoHouse.hash;
     }
-    const extraPeople = (this.data.users || []).filter((u) => u && u.id && u.id !== "u-admin");
-    const localDraftHasFamily = !!(draft && (
-      (draft.bookings || []).length ||
-      (draft.reviews || []).length ||
-      (draft.expenses || []).length ||
-      (draft.maintenance || []).length ||
-      (draft.users || []).some((u) => u && u.id && u.id !== "u-admin")
-    ));
-    if (keptUsers.length || extraPeople.length || localDraftHasFamily) {
-      await this.pushRemote();
-    }
+    // Always publish whatever this browser knows. Admin-only repo data is not
+    // enough for phones — family PINs/stays live in the cloud blob.
+    this.lastPublishOk = await this.pushRemote();
     return this.data;
   },
 
@@ -847,4 +839,4 @@ const Store = {
   }
 };
 
-window.Store = Store;
+var Store = window.Store;
