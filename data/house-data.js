@@ -1,4 +1,4 @@
-﻿window.HOUSE_DATA = {
+window.HOUSE_DATA = {
   "version": 1,
   "house": {
     "name": "The Family House",
@@ -15,24 +15,6 @@
       "pinSalt": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
       "pinHash": "b5557cb73d929dafefbfa23b405c97f960ed6c2fb5d071d137765fee27833393",
       "createdAt": "2025-01-10T10:00:00.000Z",
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "u-claire",
-      "name": "Claire",
-      "role": "family",
-      "pinSalt": "1f2e3d4c5b6a79887766554433221100",
-      "pinHash": "3d0cc5cda3ac602611135108dbaea619fd9968142f30407f8d51e8602b77b6ce",
-      "createdAt": "2025-01-10T10:05:00.000Z",
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "u-guest",
-      "name": "Guest",
-      "role": "guest",
-      "pinSalt": "0123456789abcdef0123456789abcdef",
-      "pinHash": "947ed0332373c6a3ab818240e639ba4cc59b16b3a03ef26c4cfafae419217f27",
-      "createdAt": "2025-03-01T09:00:00.000Z",
       "createdBy": "u-admin"
     }
   ],
@@ -65,96 +47,15 @@
     { "id": "sh-2027-xmas", "label": "Christmas 2027", "kind": "christmas", "start": "2027-12-11", "end": "2028-01-04" }
   ],
   "owners": [
-    { "id": "u-admin", "name": "House Admin" },
-    { "id": "u-claire", "name": "Claire" },
-    { "id": "o-john", "name": "John Smith" },
-    { "id": "o-anne", "name": "Anne" }
+    { "id": "u-admin", "name": "House Admin" }
   ],
-  "bookings": [
-    {
-      "id": "b-may",
-      "arrival": "2026-05-23",
-      "departure": "2026-05-30",
-      "guestCount": 4,
-      "guests": "House Admin, Anne, and the twins",
-      "notes": "Spring half-term. Pool just opened.",
-      "status": "booked",
-      "createdBy": "u-admin",
-      "createdAt": "2026-02-12T11:00:00.000Z"
-    },
-    {
-      "id": "b-jul",
-      "arrival": "2026-07-04",
-      "departure": "2026-07-18",
-      "guestCount": 6,
-      "guests": "Claire, Tom, kids, and Granny",
-      "notes": "Long summer stay. Beach days at Gigaro.",
-      "status": "booked",
-      "createdBy": "u-claire",
-      "createdAt": "2026-01-20T18:30:00.000Z"
-    },
-    {
-      "id": "b-now",
-      "arrival": "2026-08-08",
-      "departure": "2026-08-16",
-      "guestCount": 2,
-      "guests": "Sophie and Mark (friends of Claire)",
-      "notes": "First time at the house. Spare keys in the kitchen drawer.",
-      "status": "booked",
-      "createdBy": "u-claire",
-      "createdAt": "2026-06-02T09:15:00.000Z"
-    },
-    {
-      "id": "b-aug2",
-      "arrival": "2026-08-22",
-      "departure": "2026-08-29",
-      "guestCount": 5,
-      "guests": "Claire and family",
-      "notes": "Late August. Book restaurant for Friday if possible.",
-      "status": "booked",
-      "createdBy": "u-claire",
-      "createdAt": "2026-03-14T16:00:00.000Z"
-    },
-    {
-      "id": "b-sep",
-      "arrival": "2026-09-05",
-      "departure": "2026-09-12",
-      "guestCount": 3,
-      "guests": "House Admin and friends",
-      "notes": "Quieter week after the summer rush.",
-      "status": "booked",
-      "createdBy": "u-admin",
-      "createdAt": "2026-04-01T10:00:00.000Z"
-    },
-    {
-      "id": "b-block",
-      "arrival": "2026-09-15",
-      "departure": "2026-09-17",
-      "guestCount": 0,
-      "guests": "",
-      "notes": "Pool pump replacement — house closed.",
-      "status": "blocked",
-      "createdBy": "u-admin",
-      "createdAt": "2026-07-28T08:00:00.000Z"
-    },
-    {
-      "id": "b-oct",
-      "arrival": "2026-10-17",
-      "departure": "2026-10-24",
-      "guestCount": 4,
-      "guests": "Claire and the children",
-      "notes": "Autumn half-term.",
-      "status": "booked",
-      "createdBy": "u-claire",
-      "createdAt": "2026-05-09T12:00:00.000Z"
-    }
-  ],
+  "bookings": [],
   "documents": [
     {
       "id": "d-access",
       "title": "Arrival — access and keys",
       "category": "Arrival",
-      "body": "SAMPLE ONLY — change these notes in the GitHub data file when you use the house for real.\n\nGate: small remote in the key box by the olive tree.\nFront door: Yale lock. Spare set in the kitchen drawer marked 'spares'.\nParking: two spaces under the pines, nose-in. Do not block the neighbour's turning circle.\nWifi name and password: see the Wi-Fi card in Manuals.",
+      "body": "Add the real notes here when you know them.\n\nGate: where the remote / key box lives.\nFront door: lock type and spare-key drawer.\nParking: where to leave the car, and what not to block.\nWifi: see the Wi-Fi card in Manuals.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:00:00.000Z"
     },
@@ -162,7 +63,7 @@
       "id": "d-alarm",
       "title": "Arrival — alarm",
       "category": "Arrival",
-      "body": "SAMPLE — do not use these as real codes.\n\nPanel is inside the front door, left wall.\nUnset: enter your family code, then OFF.\nSet when leaving: CLOSE, then ON. Wait for the double beep.\nIf it sounds, press OFF and call the property manager.",
+      "body": "Add the real family codes here — do not invent them.\n\nPanel: usually just inside the front door.\nUnset: enter the family code, then OFF.\nSet when leaving: CLOSE, then ON. Wait for the double beep.\nIf it sounds, press OFF and call the person listed under Contacts.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:05:00.000Z"
     },
@@ -170,7 +71,7 @@
       "id": "d-checkin",
       "title": "Arrival — check-in list",
       "category": "Arrival",
-      "body": "1. Open shutters on the garden side.\n2. Fridge on, check milk and water.\n3. Pool cover: only adults, hook on the far wall.\n4. Read the pool rules on the terrace notice.\n5. Nearest beach is Gigaro — 5 minutes by car, or a shaded walk.",
+      "body": "1. Open shutters on the garden side.\n2. Fridge on, check milk and water.\n3. Pool cover: only adults.\n4. Read the pool rules on the terrace notice.\n5. Nearest beach is Gigaro — a few minutes by car, or a shaded walk.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:10:00.000Z"
     },
@@ -178,7 +79,7 @@
       "id": "d-clean",
       "title": "Departure — cleaning",
       "category": "Departure",
-      "body": "Strip beds and leave linen in the laundry basket.\nRun the dishwasher and empty it.\nWipe kitchen surfaces.\nTake rubbish and recycling to the bins on Chemin des Moulins (see Bins note).\nLeave used towels in the bathroom hamper.",
+      "body": "Strip beds and leave linen in the laundry basket.\nRun the dishwasher and empty it.\nWipe kitchen surfaces.\nTake rubbish and recycling to the bins (see Bins note).\nLeave used towels in the bathroom hamper.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:15:00.000Z"
     },
@@ -186,7 +87,7 @@
       "id": "d-lock",
       "title": "Departure — lock-up",
       "category": "Departure",
-      "body": "Close all windows and shutters.\nBBQ gas OFF.\nOutdoor cushions in the pool cupboard.\nLights off.\nAlarm ON.\nGate closed. Return remotes to the key box.",
+      "body": "Close all windows and shutters.\nBBQ gas OFF.\nOutdoor cushions away.\nLights off.\nAlarm ON.\nGate closed. Return remotes to the key box.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:20:00.000Z"
     },
@@ -194,7 +95,7 @@
       "id": "d-bins",
       "title": "Departure — bins",
       "category": "Departure",
-      "body": "Yellow lid: recycling. Grey: household. Glass: bottle bank by the Mairie.\nCollection is usually Tuesday morning. Put bins out Monday evening if you leave on a Tuesday.",
+      "body": "Yellow lid: recycling. Grey: household. Glass: bottle bank by the Mairie.\nAdd the local collection day here. If you leave on collection morning, put bins out the evening before.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:25:00.000Z"
     },
@@ -202,7 +103,7 @@
       "id": "d-ac",
       "title": "Manual — air conditioning",
       "category": "Manuals",
-      "body": "Wall remotes in each bedroom. Start at 24°C. Do not run AC with shutters and windows open.\nOutdoor unit is behind the kitchen. If it ices or drips heavily, turn off and report a maintenance issue.",
+      "body": "Wall remotes in each bedroom. Start at 24°C. Do not run AC with shutters and windows open.\nIf the outdoor unit ices or drips heavily, turn off and report a maintenance issue.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:30:00.000Z"
     },
@@ -210,7 +111,7 @@
       "id": "d-pool",
       "title": "Manual — pool",
       "category": "Manuals",
-      "body": "Hours: 8:00–20:00. No glass. Children with an adult only.\nRobot lives in the plant room. Pump schedule is on the timer — do not change it.\nCover: wind on the reel clockwise. Never walk on the cover.",
+      "body": "Hours: 8:00–20:00. No glass. Children with an adult only.\nRobot lives in the plant room. Leave the pump timer as set.\nCover: wind on the reel. Never walk on the cover.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:35:00.000Z"
     },
@@ -218,7 +119,7 @@
       "id": "d-wifi",
       "title": "Manual — Wi-Fi and TV",
       "category": "Manuals",
-      "body": "Network: FamilyHouse-WiFi (sample).\nPassword: on the card in the kitchen drawer.\nOrange Livebox is in the cupboard under the stairs. Red light? Restart it, wait two minutes.\nTV: HDMI 1 is the Fire Stick. HDMI 2 is French TNT.",
+      "body": "Network: add the house Wi-Fi name here.\nPassword: on the card in the kitchen drawer (add the real one when you have it).\nRouter: usually in a cupboard. Red light? Restart it, wait two minutes.\nTV: HDMI 1 is often a stick / box. HDMI 2 is French TNT.",
       "createdBy": "u-admin",
       "createdAt": "2026-03-01T10:40:00.000Z"
     }
@@ -234,24 +135,10 @@
       "phone": "+33 4 94 79 59 26",
       "website": "https://www.chezcamille.fr",
       "cuisine": "Seafood",
-      "rating": 5,
-      "notes": "Feet in the sand at Gigaro. Book ahead in summer.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-08T19:00:00.000Z"
-    },
-    {
-      "id": "r-escale",
-      "kind": "restaurant",
-      "name": "L'Escale",
-      "town": "La Croix-Valmer",
-      "address": "Port de La Croix-Valmer",
-      "phone": "+33 4 94 79 67 11",
-      "website": "",
-      "cuisine": "Provençal",
-      "rating": 4,
-      "notes": "Simple, good for a quiet supper in the village.",
+      "rating": 0,
+      "notes": "Well-known beach restaurant at Gigaro. Book ahead in summer.",
       "createdBy": "u-admin",
-      "createdAt": "2026-05-24T20:00:00.000Z"
+      "createdAt": "2026-03-01T11:00:00.000Z"
     },
     {
       "id": "r-club55",
@@ -262,38 +149,10 @@
       "phone": "+33 4 94 55 55 55",
       "website": "https://www.leclub55.fr",
       "cuisine": "Beach",
-      "rating": 4,
-      "notes": "Famous and busy. Treat, not a weekly habit.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-12T14:00:00.000Z"
-    },
-    {
-      "id": "r-gassin",
-      "kind": "restaurant",
-      "name": "Le Micocoulier",
-      "town": "Gassin",
-      "address": "Place de la Mairie, 83580 Gassin",
-      "phone": "+33 4 94 56 14 01",
-      "website": "",
-      "cuisine": "French",
-      "rating": 5,
-      "notes": "Village square, sunset over the gulf.",
+      "rating": 0,
+      "notes": "Famous Pampelonne beach club. Busy in August.",
       "createdBy": "u-admin",
-      "createdAt": "2026-05-26T19:30:00.000Z"
-    },
-    {
-      "id": "r-pizza",
-      "kind": "restaurant",
-      "name": "Villa Mezza",
-      "town": "Cavalaire-sur-Mer",
-      "address": "Avenue des Alliés, 83240 Cavalaire-sur-Mer",
-      "phone": "+33 4 94 64 22 90",
-      "website": "",
-      "cuisine": "Pizza",
-      "rating": 4,
-      "notes": "Easy with children. Takeaway possible.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-10T18:00:00.000Z"
+      "createdAt": "2026-03-01T11:05:00.000Z"
     },
     {
       "id": "p-gigaro",
@@ -304,10 +163,10 @@
       "phone": "",
       "website": "",
       "cuisine": "",
-      "rating": 5,
-      "notes": "Family beach, pines, easy parking early. Walk or five minutes by car.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-05T10:00:00.000Z"
+      "rating": 0,
+      "notes": "Family beach, pines, easier parking early. Walk or a few minutes by car.",
+      "createdBy": "u-admin",
+      "createdAt": "2026-03-01T11:10:00.000Z"
     },
     {
       "id": "p-pampelonne",
@@ -318,10 +177,10 @@
       "phone": "",
       "website": "",
       "cuisine": "",
-      "rating": 4,
+      "rating": 0,
       "notes": "Long sand. Busy in August. Public stretches between the clubs.",
       "createdBy": "u-admin",
-      "createdAt": "2026-07-12T11:00:00.000Z"
+      "createdAt": "2026-03-01T11:15:00.000Z"
     },
     {
       "id": "p-gassin",
@@ -332,10 +191,10 @@
       "phone": "",
       "website": "",
       "cuisine": "",
-      "rating": 5,
+      "rating": 0,
       "notes": "One of the Plus Beaux Villages. Sunset over the gulf. Park below and walk up.",
       "createdBy": "u-admin",
-      "createdAt": "2026-05-26T17:00:00.000Z"
+      "createdAt": "2026-03-01T11:20:00.000Z"
     },
     {
       "id": "p-citadelle",
@@ -346,10 +205,10 @@
       "phone": "+33 4 94 97 59 43",
       "website": "",
       "cuisine": "",
-      "rating": 4,
+      "rating": 0,
       "notes": "Views and a small museum. Go early before the port fills.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-14T15:00:00.000Z"
+      "createdBy": "u-admin",
+      "createdAt": "2026-03-01T11:25:00.000Z"
     },
     {
       "id": "p-superu",
@@ -360,10 +219,10 @@
       "phone": "",
       "website": "",
       "cuisine": "",
-      "rating": 4,
-      "notes": "Main weekly shop. Better prices than the village.",
+      "rating": 0,
+      "notes": "Main supermarket for a weekly shop.",
       "createdBy": "u-admin",
-      "createdAt": "2026-05-23T16:00:00.000Z"
+      "createdAt": "2026-03-01T11:30:00.000Z"
     },
     {
       "id": "p-market",
@@ -374,10 +233,10 @@
       "phone": "",
       "website": "",
       "cuisine": "",
-      "rating": 5,
+      "rating": 0,
       "notes": "Sunday morning market. Fruit, cheese, flowers. Cash useful.",
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-06T09:30:00.000Z"
+      "createdBy": "u-admin",
+      "createdAt": "2026-03-01T11:35:00.000Z"
     },
     {
       "id": "p-pharma",
@@ -388,135 +247,89 @@
       "phone": "+33 4 94 79 60 22",
       "website": "",
       "cuisine": "",
-      "rating": 4,
+      "rating": 0,
       "notes": "Village chemist. Check Sunday rota on the door.",
       "createdBy": "u-admin",
-      "createdAt": "2026-06-01T11:00:00.000Z"
+      "createdAt": "2026-03-01T11:40:00.000Z"
     }
   ],
-  "reviews": [
-    {
-      "id": "rv-1",
-      "placeId": "r-camille",
-      "restaurantId": "r-camille",
-      "rating": 5,
-      "text": "Grilled fish and rosé, children happy in the shallows. Go early.",
-      "photos": [],
-      "replies": [
-        {
-          "id": "rp-1",
-          "text": "Agreed — we booked for 12:15 and it was calm. By 2pm the beach was packed.",
-          "createdBy": "u-admin",
-          "createdAt": "2026-07-09T08:10:00.000Z"
-        }
-      ],
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-08T21:00:00.000Z"
-    },
-    {
-      "id": "rv-2",
-      "placeId": "p-gigaro",
-      "rating": 5,
-      "text": "Best family beach. Shade under the pines if you walk left.",
-      "photos": [],
-      "replies": [],
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-05T18:00:00.000Z"
-    },
-    {
-      "id": "rv-3",
-      "placeId": "p-market",
-      "rating": 5,
-      "text": "Melons and the goat cheese stall at the far end. Get there before 10.",
-      "photos": [],
-      "replies": [
-        {
-          "id": "rp-2",
-          "text": "Updated: the cheese stall moved next to the florist this summer.",
-          "createdBy": "u-admin",
-          "createdAt": "2026-08-02T09:00:00.000Z"
-        }
-      ],
-      "createdBy": "u-admin",
-      "createdAt": "2026-07-06T11:00:00.000Z"
-    }
-  ],
+  "reviews": [],
   "contacts": [
     {
       "id": "c-pool",
-      "name": "Luc Moreau",
-      "business": "Azur Piscines",
+      "name": "Add your pool person",
+      "business": "Pool",
       "category": "pool",
-      "phone": "+33 6 12 34 56 01",
-      "email": "luc@azurpiscines.example",
-      "notes": "Weekly chemistry and robot. Knows our timer.",
-      "lastUsed": "2026-08-05",
+      "phone": "",
+      "email": "",
+      "notes": "Weekly chemistry and robot.",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-clean",
-      "name": "Marie Blanc",
-      "business": "Maison Claire",
+      "name": "Add your cleaner",
+      "business": "Cleaning",
       "category": "cleaner",
-      "phone": "+33 6 12 34 56 02",
-      "email": "marie@maisonclaire.example",
-      "notes": "Changeover cleans. Prefers morning slots.",
-      "lastUsed": "2026-08-08",
+      "phone": "",
+      "email": "",
+      "notes": "Changeover cleans.",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-elec",
-      "name": "Paul Rossi",
-      "business": "Électricité du Golfe",
+      "name": "Add your electrician",
+      "business": "Electrical",
       "category": "electrician",
-      "phone": "+33 6 12 34 56 03",
-      "email": "paul@elecgolfe.example",
+      "phone": "",
+      "email": "",
       "notes": "Fuse board and outdoor lights.",
-      "lastUsed": "2026-06-18",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-plumb",
-      "name": "Henri Vidal",
-      "business": "Plomberie Vidal",
+      "name": "Add your plumber",
+      "business": "Plumbing",
       "category": "plumber",
-      "phone": "+33 6 12 34 56 04",
-      "email": "henri@vidal.example",
+      "phone": "",
+      "email": "",
       "notes": "Stopcock and pool plant room.",
-      "lastUsed": "2026-04-02",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-garden",
-      "name": "Nadia Costa",
-      "business": "Jardins des Maures",
+      "name": "Add your gardener",
+      "business": "Garden",
       "category": "gardener",
-      "phone": "+33 6 12 34 56 05",
-      "email": "nadia@jardinsmaures.example",
-      "notes": "Monthly visit. Watering in heatwaves.",
-      "lastUsed": "2026-08-01",
+      "phone": "",
+      "email": "",
+      "notes": "Lawn, olives, watering.",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-build",
-      "name": "Antoine Perez",
-      "business": "Perez Bâtiment",
+      "name": "Add your builder",
+      "business": "Builder",
       "category": "builder",
-      "phone": "+33 6 12 34 56 06",
-      "email": "antoine@perezb.example",
+      "phone": "",
+      "email": "",
       "notes": "Shutters, terrace repairs.",
-      "lastUsed": "2026-03-20",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
       "id": "c-pm",
-      "name": "Élise Fournier",
-      "business": "Golfe Property",
+      "name": "Add your property manager",
+      "business": "Property manager",
       "category": "manager",
-      "phone": "+33 6 12 34 56 07",
-      "email": "elise@golfeproperty.example",
+      "phone": "",
+      "email": "",
       "notes": "First call if you cannot reach family.",
-      "lastUsed": "2026-08-08",
+      "lastUsed": "",
       "createdBy": "u-admin"
     },
     {
@@ -597,106 +410,16 @@
       "createdBy": "u-admin"
     }
   ],
-  "maintenance": [
-    {
-      "id": "m-shutter",
-      "title": "Bedroom 2 shutter stuck",
-      "description": "Right-hand shutter will not fold back. Guests cannot darken the room properly.",
-      "category": "Furniture",
-      "priority": "important",
-      "status": "assigned",
-      "reporter": "u-claire",
-      "date": "2026-07-16",
-      "assignedContractorId": "c-build",
-      "estimatedCompletion": "2026-09-16",
-      "completionNotes": "",
-      "photos": [],
-      "videos": [],
-      "invoices": [],
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-16T09:20:00.000Z"
-    },
-    {
-      "id": "m-filter",
-      "title": "Pool filter noisy",
-      "description": "Loud rattle from the plant room after 10 minutes. Water still clear.",
-      "category": "Pool",
-      "priority": "urgent",
-      "status": "progress",
-      "reporter": "u-admin",
-      "date": "2026-08-05",
-      "assignedContractorId": "c-pool",
-      "estimatedCompletion": "2026-09-16",
-      "completionNotes": "",
-      "photos": [],
-      "videos": [],
-      "invoices": [],
-      "createdBy": "u-admin",
-      "createdAt": "2026-08-05T07:40:00.000Z"
-    },
-    {
-      "id": "m-wifi",
-      "title": "Wi-Fi drops in the annex",
-      "description": "Signal dies in the little bedroom off the terrace around 7pm.",
-      "category": "Electrical",
-      "priority": "minor",
-      "status": "reviewed",
-      "reporter": "u-guest",
-      "date": "2026-08-10",
-      "assignedContractorId": "",
-      "estimatedCompletion": "",
-      "completionNotes": "",
-      "photos": [],
-      "videos": [],
-      "invoices": [],
-      "createdBy": "u-guest",
-      "createdAt": "2026-08-10T19:10:00.000Z"
-    },
-    {
-      "id": "m-light",
-      "title": "Terrace spot light out",
-      "description": "Far left garden spot is dead. Path is dark at night.",
-      "category": "Electrical",
-      "priority": "minor",
-      "status": "completed",
-      "reporter": "u-claire",
-      "date": "2026-05-24",
-      "assignedContractorId": "c-elec",
-      "estimatedCompletion": "2026-06-18",
-      "completionNotes": "Replaced fitting and bulb. Invoice filed.",
-      "photos": [],
-      "videos": [],
-      "invoices": [],
-      "createdBy": "u-claire",
-      "createdAt": "2026-05-24T21:00:00.000Z"
-    }
-  ],
-  "comments": [
-    {
-      "id": "cm-1",
-      "parentType": "maintenance",
-      "parentId": "m-filter",
-      "text": "Luc is ordering a new pump. House blocked 15–17 Sept for the swap.",
-      "createdBy": "u-admin",
-      "createdAt": "2026-08-06T11:00:00.000Z"
-    },
-    {
-      "id": "cm-2",
-      "parentType": "idea",
-      "parentId": "i-ev",
-      "text": "Need to check Enedis supply before we buy a charger.",
-      "createdBy": "u-admin",
-      "createdAt": "2026-06-01T09:00:00.000Z"
-    }
-  ],
+  "maintenance": [],
+  "comments": [],
   "recurring": [
     {
       "id": "rc-pool",
       "title": "Weekly pool check",
       "frequency": "weekly",
       "assignedContactId": "c-pool",
-      "lastCompleted": "2026-08-05",
-      "nextDue": "2026-08-12",
+      "lastCompleted": "",
+      "nextDue": "",
       "notes": "Chlorine, pH, robot, skimmer baskets."
     },
     {
@@ -704,8 +427,8 @@
       "title": "Monthly garden visit",
       "frequency": "monthly",
       "assignedContactId": "c-garden",
-      "lastCompleted": "2026-08-01",
-      "nextDue": "2026-09-01",
+      "lastCompleted": "",
+      "nextDue": "",
       "notes": "Lawn, olives, watering."
     },
     {
@@ -713,8 +436,8 @@
       "title": "Quarterly deep clean",
       "frequency": "quarterly",
       "assignedContactId": "c-clean",
-      "lastCompleted": "2026-06-01",
-      "nextDue": "2026-09-01",
+      "lastCompleted": "",
+      "nextDue": "",
       "notes": "Ovens, windows, cupboards."
     },
     {
@@ -722,8 +445,8 @@
       "title": "Annual AC service",
       "frequency": "annual",
       "assignedContactId": "c-elec",
-      "lastCompleted": "2025-10-10",
-      "nextDue": "2026-10-10",
+      "lastCompleted": "",
+      "nextDue": "",
       "notes": "Filters and outdoor unit."
     },
     {
@@ -731,193 +454,29 @@
       "title": "Annual electrical inspection",
       "frequency": "annual",
       "assignedContactId": "c-elec",
-      "lastCompleted": "2025-11-02",
-      "nextDue": "2026-11-02",
+      "lastCompleted": "",
+      "nextDue": "",
       "notes": "Board, RCDs, outdoor circuits."
     }
   ],
-  "expenses": [
-    {
-      "id": "e-drain",
-      "description": "Drainage Repair",
-      "amount": 250,
-      "currency": "GBP",
-      "date": "2026-08-10",
-      "category": "drainage",
-      "type": "shared",
-      "paidBy": "o-john",
-      "supplier": "Plomberie Vidal",
-      "notes": "Blocked run-off after the August storm. Invoice in the plant-room folder.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 62.5, "status": "owed" },
-        { "userId": "u-claire", "amount": 62.5, "status": "owed" },
-        { "userId": "o-john", "amount": 62.5, "status": "settled" },
-        { "userId": "o-anne", "amount": 62.5, "status": "paid" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-clean",
-      "description": "Changeover clean",
-      "amount": 120,
-      "currency": "GBP",
-      "date": "2026-08-08",
-      "category": "cleaning",
-      "type": "shared",
-      "paidBy": "u-claire",
-      "supplier": "Maison Claire",
-      "notes": "Beds and bathrooms before Sophie and Mark arrived.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 30, "status": "owed" },
-        { "userId": "u-claire", "amount": 30, "status": "settled" },
-        { "userId": "o-john", "amount": 30, "status": "owed" },
-        { "userId": "o-anne", "amount": 30, "status": "owed" }
-      ],
-      "createdBy": "u-claire"
-    },
-    {
-      "id": "e-edf",
-      "description": "July electricity",
-      "amount": 80,
-      "currency": "GBP",
-      "date": "2026-07-31",
-      "category": "utilities",
-      "type": "shared",
-      "paidBy": "u-admin",
-      "supplier": "EDF",
-      "notes": "Summer AC use.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 20, "status": "settled" },
-        { "userId": "u-claire", "amount": 20, "status": "paid" },
-        { "userId": "o-john", "amount": 20, "status": "paid" },
-        { "userId": "o-anne", "amount": 20, "status": "paid" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-pool",
-      "description": "Pool chemicals",
-      "amount": 45,
-      "currency": "GBP",
-      "date": "2026-08-05",
-      "category": "pool",
-      "type": "shared",
-      "paidBy": "u-admin",
-      "supplier": "Azur Piscines",
-      "notes": "Chlorine and pH plus.",
-      "issueId": "m-filter",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 11.25, "status": "settled" },
-        { "userId": "u-claire", "amount": 11.25, "status": "owed" },
-        { "userId": "o-john", "amount": 11.25, "status": "owed" },
-        { "userId": "o-anne", "amount": 11.25, "status": "owed" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-garden",
-      "description": "August garden visit",
-      "amount": 90,
-      "currency": "GBP",
-      "date": "2026-08-01",
-      "category": "gardening",
-      "type": "shared",
-      "paidBy": "o-anne",
-      "supplier": "Jardins des Maures",
-      "notes": "Lawn and watering after the heat.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 22.5, "status": "owed" },
-        { "userId": "u-claire", "amount": 22.5, "status": "owed" },
-        { "userId": "o-john", "amount": 22.5, "status": "owed" },
-        { "userId": "o-anne", "amount": 22.5, "status": "settled" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-cushions",
-      "description": "New terrace cushions",
-      "amount": 160,
-      "currency": "GBP",
-      "date": "2026-06-20",
-      "category": "furniture",
-      "type": "shared",
-      "paidBy": "o-john",
-      "supplier": "Maison du Monde",
-      "notes": "Washable covers for six chairs.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 40, "status": "paid" },
-        { "userId": "u-claire", "amount": 40, "status": "paid" },
-        { "userId": "o-john", "amount": 40, "status": "settled" },
-        { "userId": "o-anne", "amount": 40, "status": "paid" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-light",
-      "description": "Terrace light fitting",
-      "amount": 160,
-      "currency": "GBP",
-      "date": "2026-06-18",
-      "category": "improvements",
-      "type": "shared",
-      "paidBy": "u-admin",
-      "supplier": "Électricité du Golfe",
-      "notes": "Really electrical — filed under the repair. See completed issue.",
-      "issueId": "m-light",
-      "receipts": [],
-      "splits": [
-        { "userId": "u-admin", "amount": 40, "status": "settled" },
-        { "userId": "u-claire", "amount": 40, "status": "paid" },
-        { "userId": "o-john", "amount": 40, "status": "paid" },
-        { "userId": "o-anne", "amount": 40, "status": "paid" }
-      ],
-      "createdBy": "u-admin"
-    },
-    {
-      "id": "e-toys",
-      "description": "Beach toys for the children",
-      "amount": 28,
-      "currency": "GBP",
-      "date": "2026-07-06",
-      "category": "improvements",
-      "type": "personal",
-      "paidBy": "u-claire",
-      "supplier": "Super U Cavalaire",
-      "notes": "Personal — not for the house split.",
-      "issueId": "",
-      "receipts": [],
-      "splits": [],
-      "createdBy": "u-claire"
-    }
-  ],
+  "expenses": [],
   "inventory": [
     {
       "id": "inv-1",
-      "name": "Kitchen range (smeg)",
+      "name": "Kitchen range",
       "category": "appliances",
-      "purchaseDate": "2022-04-01",
-      "warrantyUntil": "2027-04-01",
+      "purchaseDate": "",
+      "warrantyUntil": "",
       "location": "Kitchen",
       "manualDocId": "",
-      "notes": "Gas hob, electric oven."
+      "notes": "Add make, model and warranty here."
     },
     {
       "id": "inv-2",
       "name": "Pool robot",
       "category": "pool",
-      "purchaseDate": "2024-05-15",
-      "warrantyUntil": "2026-05-15",
+      "purchaseDate": "",
+      "warrantyUntil": "",
       "location": "Plant room",
       "manualDocId": "d-pool",
       "notes": "Charge after each use."
@@ -926,27 +485,27 @@
       "id": "inv-3",
       "name": "Garden dining table",
       "category": "furniture",
-      "purchaseDate": "2021-06-01",
+      "purchaseDate": "",
       "warrantyUntil": "",
       "location": "Terrace",
       "manualDocId": "",
-      "notes": "Teak. Covers in the pool cupboard."
+      "notes": "Covers in the pool cupboard."
     },
     {
       "id": "inv-4",
-      "name": "Fire TV stick",
+      "name": "TV stick / box",
       "category": "electronics",
-      "purchaseDate": "2025-03-10",
-      "warrantyUntil": "2026-03-10",
+      "purchaseDate": "",
+      "warrantyUntil": "",
       "location": "Living room TV",
       "manualDocId": "d-wifi",
-      "notes": "Family Amazon account."
+      "notes": "Add the house account here if you use one."
     },
     {
       "id": "inv-5",
       "name": "Basic tool kit",
       "category": "tools",
-      "purchaseDate": "2020-08-01",
+      "purchaseDate": "",
       "warrantyUntil": "",
       "location": "Under-stairs cupboard",
       "manualDocId": "",
@@ -964,15 +523,7 @@
     { "id": "ck-alarm", "label": "Alarm set", "sort": 8, "active": true },
     { "id": "ck-lights", "label": "Lights off", "sort": 9, "active": true }
   ],
-  "checklistRecords": [
-    {
-      "id": "cr-jul",
-      "bookingId": "b-jul",
-      "completedItemIds": ["ck-bins", "ck-dish", "ck-ac", "ck-win", "ck-doors", "ck-bbq", "ck-out", "ck-alarm", "ck-lights"],
-      "completedBy": "u-claire",
-      "completedAt": "2026-07-18T09:40:00.000Z"
-    }
-  ],
+  "checklistRecords": [],
   "mapSpots": [
     { "id": "ms-water", "label": "Water shut-off", "x": 18, "y": 72, "kind": "water", "note": "Blue valve in the plant room, left of the pump. Turn clockwise." },
     { "id": "ms-board", "label": "Electrical panel", "x": 22, "y": 38, "kind": "power", "note": "Grey board in the under-stairs cupboard. Main switch at the top." },
@@ -980,7 +531,7 @@
     { "id": "ms-gas", "label": "Gas shut-off", "x": 40, "y": 78, "kind": "gas", "note": "BBQ bottle: tap on top. Kitchen gas: yellow tap beside the range." },
     { "id": "ms-pool", "label": "Pool equipment", "x": 78, "y": 70, "kind": "pool", "note": "Plant room behind the kitchen. Timer on the wall. Do not change the clock." },
     { "id": "ms-alarm", "label": "Alarm panel", "x": 36, "y": 30, "kind": "security", "note": "Inside the front door, left wall." },
-    { "id": "ms-keys", "label": "Spare keys", "x": 48, "y": 42, "kind": "keys", "note": "Kitchen drawer marked spares. Gate remotes in the olive-tree box." },
+    { "id": "ms-keys", "label": "Spare keys", "x": 48, "y": 42, "kind": "keys", "note": "Kitchen drawer marked spares. Gate remotes in the key box." },
     { "id": "ms-park", "label": "Parking", "x": 14, "y": 18, "kind": "parking", "note": "Two spaces under the pines. Do not block the neighbour." },
     { "id": "ms-lights", "label": "Outdoor lighting", "x": 62, "y": 58, "kind": "lights", "note": "Switch by the terrace door. Timer in the plant room." }
   ],
@@ -992,89 +543,10 @@
     "poolControls": "Plant room behind the kitchen. Timer on the wall — leave it.",
     "alarm": "Panel inside the front door. See Arrival — alarm in Documents."
   },
-  "ideas": [
-    {
-      "id": "i-ev",
-      "title": "EV charger in the carport",
-      "description": "A simple wall charger for summer arrivals.",
-      "status": "considered",
-      "votes": ["u-claire", "u-admin"],
-      "createdBy": "u-claire",
-      "createdAt": "2026-05-28T16:00:00.000Z"
-    },
-    {
-      "id": "i-table",
-      "title": "New outdoor dining table",
-      "description": "Current teak seats six tightly. A table for eight would help.",
-      "status": "approved",
-      "votes": ["u-claire"],
-      "createdBy": "u-claire",
-      "createdAt": "2026-07-11T11:00:00.000Z"
-    },
-    {
-      "id": "i-lights",
-      "title": "Softer pergola lighting",
-      "description": "Warm bulbs instead of the bright spots.",
-      "status": "suggested",
-      "votes": ["u-guest"],
-      "createdBy": "u-guest",
-      "createdAt": "2026-08-10T20:00:00.000Z"
-    },
-    {
-      "id": "i-sofa",
-      "title": "Washable sofa covers",
-      "description": "Done — covers arrived in June.",
-      "status": "completed",
-      "votes": ["u-admin", "u-claire"],
-      "createdBy": "u-admin",
-      "createdAt": "2026-04-02T10:00:00.000Z"
-    },
-    {
-      "id": "i-boules",
-      "title": "Boules court",
-      "description": "Would eat the lower lawn. Kept as a no.",
-      "status": "rejected",
-      "votes": [],
-      "createdBy": "u-claire",
-      "createdAt": "2026-03-18T15:00:00.000Z"
-    }
-  ],
-  "announcements": [
-    {
-      "id": "a-1",
-      "title": "Pool open",
-      "body": "The pool is open for the season. Cover on after 20:00. Children with an adult.",
-      "createdBy": "u-admin",
-      "createdAt": "2026-05-15T08:00:00.000Z"
-    },
-    {
-      "id": "a-2",
-      "title": "House closed 15–17 September",
-      "body": "Pool pump replacement. Please do not book those nights. Thank you.",
-      "createdBy": "u-admin",
-      "createdAt": "2026-07-28T08:10:00.000Z"
-    },
-    {
-      "id": "a-3",
-      "title": "Bins: Tuesday collection",
-      "body": "If you leave on a Tuesday, put bins out Monday evening on Chemin des Moulins.",
-      "createdBy": "u-admin",
-      "createdAt": "2026-06-10T09:00:00.000Z"
-    }
-  ],
-  "activity": [
-    {
-      "id": "act-1",
-      "action": "seeded",
-      "entity": "house",
-      "entityId": "house",
-      "userId": "u-admin",
-      "at": "2026-03-01T10:00:00.000Z",
-      "detail": "Sample house data added for La Croix-Valmer"
-    }
-  ],
+  "ideas": [],
+  "announcements": [],
+  "activity": [],
   "settings": {
-    "updatedAt": "2026-08-11T10:00:00.000Z"
+    "updatedAt": "2026-08-11T12:00:00.000Z"
   }
 };
-

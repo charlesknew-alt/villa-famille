@@ -1,9 +1,1 @@
 ﻿id,description,amount,currency,date,category,type,paidBy,notes
-e-drain,Drainage Repair,250,GBP,2026-08-10,drainage,shared,o-john,Blocked run-off after the August storm. Invoice in the plant-room folder.
-e-clean,Changeover clean,120,GBP,2026-08-08,cleaning,shared,u-claire,Beds and bathrooms before Sophie and Mark arrived.
-e-edf,July electricity,80,GBP,2026-07-31,utilities,shared,u-admin,Summer AC use.
-e-pool,Pool chemicals,45,GBP,2026-08-05,pool,shared,u-admin,Chlorine and pH plus.
-e-garden,August garden visit,90,GBP,2026-08-01,gardening,shared,o-anne,Lawn and watering after the heat.
-e-cushions,New terrace cushions,160,GBP,2026-06-20,furniture,shared,o-john,Washable covers for six chairs.
-e-light,Terrace light fitting,160,GBP,2026-06-18,improvements,shared,u-admin,Really electrical — filed under the repair. See completed issue.
-e-toys,Beach toys for the children,28,GBP,2026-07-06,improvements,personal,u-claire,Personal — not for the house split.

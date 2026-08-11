@@ -1,8 +1,1 @@
 ﻿id,arrival,departure,guestCount,guests,notes,status,createdBy
-b-may,2026-05-23,2026-05-30,4,"House Admin, Anne, and the twins",Spring half-term. Pool just opened.,booked,u-admin
-b-jul,2026-07-04,2026-07-18,6,"Claire, Tom, kids, and Granny",Long summer stay. Beach days at Gigaro.,booked,u-claire
-b-now,2026-08-08,2026-08-16,2,Sophie and Mark (friends of Claire),First time at the house. Spare keys in the kitchen drawer.,booked,u-claire
-b-aug2,2026-08-22,2026-08-29,5,Claire and family,Late August. Book restaurant for Friday if possible.,booked,u-claire
-b-sep,2026-09-05,2026-09-12,3,House Admin and friends,Quieter week after the summer rush.,booked,u-admin
-b-block,2026-09-15,2026-09-17,0,,Pool pump replacement — house closed.,blocked,u-admin
-b-oct,2026-10-17,2026-10-24,4,Claire and the children,Autumn half-term.,booked,u-claire

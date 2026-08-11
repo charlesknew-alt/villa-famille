@@ -1,6 +1,6 @@
 ﻿id,name,category,location,purchaseDate,warrantyUntil,notes
-inv-1,Kitchen range (smeg),appliances,Kitchen,2022-04-01,2027-04-01,"Gas hob, electric oven."
-inv-2,Pool robot,pool,Plant room,2024-05-15,2026-05-15,Charge after each use.
-inv-3,Garden dining table,furniture,Terrace,2021-06-01,,Teak. Covers in the pool cupboard.
-inv-4,Fire TV stick,electronics,Living room TV,2025-03-10,2026-03-10,Family Amazon account.
-inv-5,Basic tool kit,tools,Under-stairs cupboard,2020-08-01,,"Hammer, bits, tape, spare bulbs."
+inv-1,Kitchen range,appliances,Kitchen,,,"Add make, model and warranty here."
+inv-2,Pool robot,pool,Plant room,,,Charge after each use.
+inv-3,Garden dining table,furniture,Terrace,,,Covers in the pool cupboard.
+inv-4,TV stick / box,electronics,Living room TV,,,Add the house account here if you use one.
+inv-5,Basic tool kit,tools,Under-stairs cupboard,,,"Hammer, bits, tape, spare bulbs."

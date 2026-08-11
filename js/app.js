@@ -317,13 +317,18 @@ const App = {
   },
 
   costBoxHtml(est) {
-    if (!est) return '<div class="cost-box" id="bk-cost"><p class="guide-price">Rough travel cost</p><p class="muted">No guide fares for those dates.</p></div>';
-    return '<div class="cost-box" id="bk-cost"><p class="guide-price">Rough travel cost</p>' +
-      "<p>About <b>£" + est.lowPp + "–£" + est.highPp + "</b> return pp · about <b>£" + est.lowTotal +
-      (est.highTotal !== est.lowTotal ? "–£" + est.highTotal : "") + "</b> for " + est.guests +
-      " guest" + (est.guests === 1 ? "" : "s") +
-      " (guide price, BA/easyJet — tap Travel to check live).</p>" +
-      '<p class="muted">Nearest convenient airport in the guide is often ' + UI.esc(est.airport) + ".</p>" +
+    const links = (est && est.links) || Flights.liveLinks("LGW", "TLN", UI.today(), UI.addDays(UI.today(), 7), 2);
+    let body = '<p>Open easyJet or British Airways to see today’s price for these dates.</p>';
+    if (est && est.live && est.lowPp) {
+      body = "<p>About <b>£" + est.lowPp + (est.highPp && est.highPp !== est.lowPp ? "–£" + est.highPp : "") +
+        "</b> return pp · about <b>£" + est.lowTotal +
+        (est.highTotal !== est.lowTotal ? "–£" + est.highTotal : "") + "</b> for " + est.guests +
+        " guest" + (est.guests === 1 ? "" : "s") + ".</p>";
+    }
+    return '<div class="cost-box" id="bk-cost"><p class="guide-price">Flights for these dates</p>' +
+      body +
+      Flights.buttonsHtml(links) +
+      '<p class="muted">Outbound ≈ arrival, return ≈ departure. Closest airport is often Toulon–Hyères (TLN); BA usually searches Nice (NCE).</p>' +
       '<p><a href="#travel">Open Travel</a></p></div>';
   },
 
@@ -510,7 +515,7 @@ const App = {
         '<div class="field-row"><label class="field"><span>Arrival</span><input name="arrival" type="date" value="' + UI.esc(b.arrival || "") + '" required></label>' +
         '<label class="field"><span>Departure</span><input name="departure" type="date" value="' + UI.esc(b.departure || "") + '" required></label></div>' +
         '<div id="bk-hol">' + this.holidayBannerHtml(b.arrival, b.departure) + "</div>" +
-        '<div id="bk-cost" class="cost-box"><p class="guide-price">Rough travel cost</p><p class="muted">Checking guide prices…</p></div>' +
+        '<div id="bk-cost" class="cost-box"><p class="guide-price">Flights for these dates</p><p class="muted">Preparing airline links…</p></div>' +
         '<label class="field"><span>Who is staying</span><input name="guests" value="' + UI.esc(b.guests || "") + '" placeholder="Names"></label>' +
         '<label class="field"><span>Guest count</span><input name="guestCount" type="number" min="0" value="' + (b.guestCount || 0) + '"></label>' +
         '<label class="field"><span>Notes</span><textarea name="notes" rows="3">' + UI.esc(b.notes || "") + "</textarea></label>" +
@@ -937,36 +942,35 @@ const App = {
     this.travelBack = back;
     const from = this.travelFrom || "";
     const to = this.travelTo || "";
-    const fares = await Flights.getFares({ date, back, from, to });
+    const guests = this.travelGuests || 2;
+    const fares = await Flights.getFares({ date, back, from, to, adults: guests });
     const hl = Flights.highlights(fares);
-    const links = Flights.liveLinks(from || "LGW", to || "TLN", date, back);
-    const card = (title, cls, f) => f ? '<div class="card hl ' + cls + '"><h3>' + title + "</h3><p class='guide-price'>Guide price</p><p class='price'>£" + f.price + '</p><p><b>' + f.from + " → " + f.to + "</b> · " + UI.esc(f.airline) +
+    const links = Flights.liveLinks(from || "LGW", to || "TLN", date, back, guests);
+    const priceBit = (f) => f && f.live && f.price ? "<p class='price'>£" + f.price + "</p>" : "<p class='muted'>Open the airline to see today’s price.</p>";
+    const card = (title, cls, f) => f ? '<div class="card hl ' + cls + '"><h3>' + title + "</h3>" + priceBit(f) +
+      "<p><b>" + f.from + " → " + f.to + "</b> · " + UI.esc(f.airline) +
       (f.direct ? ' <span class="badge-direct">Direct</span>' : "") + "</p><p class='muted'>Flight " + UI.mins(f.durationMin) + " · Drive " + f.drive.label + "</p></div>" : "";
     const view = document.getElementById("view");
     view.innerHTML = this.head("Travel", "London to the house near La Croix-Valmer", "") +
-      '<p class="note-sample">These are <b>guide prices</b> (last-known samples for BA and easyJet). They are not live. There is no airline API in this app — tap the big buttons to check today’s fares.</p>' +
-      '<div class="live-links">' +
-        '<a class="btn primary" target="_blank" rel="noopener" href="' + links.ba + '">Check live on British Airways</a>' +
-        '<a class="btn primary" target="_blank" rel="noopener" href="' + links.easyJet + '">Check live on easyJet</a>' +
-        '<a class="btn" target="_blank" rel="noopener" href="' + links.google + '">Google Flights</a>' +
-        '<a class="btn" target="_blank" rel="noopener" href="' + links.skyscanner + '">Skyscanner</a>' +
-      "</div>" +
+      '<p class="note-sample">There is no free airline price API in this app, so we do not invent fares. Tap the big buttons — they open British Airways, easyJet, Google Flights or Skyscanner with these airports and dates already filled in.</p>' +
+      Flights.buttonsHtml(links) +
       '<div class="filters"><label class="field"><span>Outbound</span><input id="tr-date" type="date" value="' + date + '"></label>' +
       '<label class="field"><span>Return</span><input id="tr-back" type="date" value="' + back + '"></label>' +
+      '<label class="field"><span>Guests</span><input id="tr-guests" type="number" min="1" max="9" value="' + guests + '"></label>' +
       this.select("tr-from", [["","All London airports"],["LHR","Heathrow"],["LGW","Gatwick"],["STN","Stansted"],["LCY","London City"]], from) +
       this.select("tr-to", [["","All arrivals"],["NCE","Nice"],["MRS","Marseille"],["TLN","Toulon–Hyères"]], to) + "</div>" +
-      '<div class="grid highlights">' + card("Cheapest BA / easyJet", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
+      '<div class="grid highlights">' + card("Live fare", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
       '<div class="grid cards" style="margin-top:16px">' + fares.map((f) =>
         '<div class="card route-card"><h3>' + f.from + " → " + f.to + "</h3><p>" + UI.esc(f.fromName) + " to " + UI.esc(f.toName) + "</p>" +
         '<div class="meta">' + (f.preferred ? '<span class="badge-direct">BA / easyJet</span>' : "") +
         (f.direct ? '<span class="badge-direct">Direct</span>' : '<span class="chip">Via ' + UI.esc(f.via || "connection") + "</span>") +
         (f.seasonal ? '<span class="chip">Seasonal</span>' : "") + "</div>" +
-        "<p class='price'>£" + f.price + " <span class='note-sample'>guide price</span></p>" +
+        (f.live && f.price ? "<p class='price'>£" + f.price + "</p>" : "<p class='muted'>Check today’s price on the airline site.</p>") +
         "<p>" + UI.esc(f.airline) + " · " + UI.mins(f.durationMin) + "</p>" +
         "<p>Drive to La Croix-Valmer: <b>" + f.drive.label + "</b>" + (f.drive.closest ? " (closest airport)" : "") + (f.drive.summerNote ? " · " + f.drive.summerNote : "") + "</p>" +
         '<div class="book-links">' +
-        (f.preferred && String(f.airline).indexOf("British") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.baUrl + '">Check live on British Airways</a>' : "") +
-        (f.preferred && String(f.airline).toLowerCase().indexOf("easyjet") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.easyJetUrl + '">Check live on easyJet</a>' : "") +
+        (f.preferred && String(f.airline).indexOf("British") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.baUrl + '">Check live price on British Airways</a>' : "") +
+        (f.preferred && String(f.airline).toLowerCase().indexOf("easyjet") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.easyJetUrl + '">Check live price on easyJet</a>' : "") +
         '<a class="btn" target="_blank" rel="noopener" href="' + f.googleUrl + '">Google Flights</a>' +
         '<a class="btn" target="_blank" rel="noopener" href="' + f.skyscannerUrl + '">Skyscanner</a>' +
         "</div></div>"
@@ -976,12 +980,14 @@ const App = {
       this.travelBack = document.getElementById("tr-back").value;
       this.travelFrom = document.getElementById("tr-from").value;
       this.travelTo = document.getElementById("tr-to").value;
+      this.travelGuests = Number(document.getElementById("tr-guests").value) || 2;
       this.renderTravel();
     };
     document.getElementById("tr-date").onchange = apply;
     document.getElementById("tr-back").onchange = apply;
     document.getElementById("tr-from").onchange = apply;
     document.getElementById("tr-to").onchange = apply;
+    document.getElementById("tr-guests").onchange = apply;
     this.afterRender();
   },
 
@@ -1110,7 +1116,7 @@ const App = {
     const s = Store.moneySummary(rows);
     const cats = Object.keys(s.byCat).sort((a, b) => s.byCat[b] - s.byCat[a]);
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Expenses", "House bills in pounds. Shared costs split between the four owners.",
+    view.innerHTML = this.head("Expenses", "House bills in pounds. Shared costs split between the owners.",
       Auth.canEdit() ? '<button class="btn primary" id="add-exp" type="button">Add expense</button>' : "") +
       '<div class="grid stats">' +
         this.stat(Store.pound(s.month), "This month") +
@@ -1301,10 +1307,20 @@ const App = {
     const acts = Store.data.activity.slice(0, 40);
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", "PINs, backup, and activity") +
-      '<div class="card"><h3>How this runs, and where the calendar lives</h3>' +
+      '<div class="card"><h3>One house, one address</h3>' +
+      '<p>Calendar, flights, PINs and maintenance are <b>one website</b> — one address later (GitHub Pages or a custom domain). Not many apps.</p></div>' +
+      '<div class="card" style="margin-top:16px"><h3>How this runs, and where the calendar lives</h3>' +
       '<p>There is no server on this PC. <b>index.html</b> is a website file — open it in a browser. The GitHub page is only the code locker, not the live house.</p>' +
       '<p>The real calendar, bookings, people, and the rest live in <b>data/house.json</b> on GitHub. While you use the site, new bookings first save as a <b>draft in this browser</b>. Then download that file and put it back on GitHub so the family at home sees the same dates. Spreadsheet copies are in <b>data/csv/</b>.</p>' +
       '<div class="actions"><button class="btn primary" id="dl-json">Download house.json</button><button class="btn" id="dl-csv">Download CSVs</button><label class="btn">Restore JSON<input type="file" id="up-json" accept="application/json" hidden></label></div></div>' +
+      '<div class="card" style="margin-top:16px"><h3>Flight prices (optional)</h3>' +
+      '<p class="muted">BA and easyJet need paid API keys. Leave this blank — the Travel buttons still open those sites with your dates. If you later get a Kiwi / Duffel / Amadeus key, paste it here. It stays in this browser only.</p>' +
+      '<form id="fare-key-form"><label class="field"><span>Provider</span><select name="provider">' +
+        '<option value="kiwi"' + (Flights.apiProvider() === "kiwi" ? " selected" : "") + ">Kiwi / Tequila</option>" +
+        '<option value="duffel"' + (Flights.apiProvider() === "duffel" ? " selected" : "") + ">Duffel (later)</option>" +
+        '<option value="amadeus"' + (Flights.apiProvider() === "amadeus" ? " selected" : "") + ">Amadeus (later)</option>" +
+      '</select></label><label class="field"><span>API key</span><input name="key" type="password" autocomplete="off" placeholder="' +
+      (Flights.apiKey() ? "Key saved in this browser" : "Optional") + '"></label><button class="btn" type="submit">Save key</button></form></div>' +
       '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille"></label>' +
       '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off"></label><button class="btn">Save to GitHub</button></form></div>' +
       this.schoolFamilyCard() +
@@ -1328,6 +1344,15 @@ const App = {
         await Store.saveToGitHub(UI.val(e.target, "token"), parts[0], parts[1], "main");
         UI.toast("Saved to GitHub");
       } catch (err) { UI.toast(err.message); }
+    };
+    const fareForm = document.getElementById("fare-key-form");
+    if (fareForm) fareForm.onsubmit = (e) => {
+      e.preventDefault();
+      const key = UI.val(fareForm, "key");
+      const provider = UI.val(fareForm, "provider") || "kiwi";
+      Flights.setApiKey(key, provider);
+      UI.toast(key ? "Flight key saved in this browser" : "Flight key cleared");
+      this.renderSettings();
     };
     this.bindPinAdmin();
     this.bindSchoolSettings();
@@ -1437,7 +1462,9 @@ const App = {
       const pin = UI.val(f, "pin");
       if (!/^\d{4,6}$/.test(pin)) return UI.toast("PIN must be 4–6 digits");
       const salt = CryptoUtil.randomSalt();
-      Store.data.users.push({ id: CryptoUtil.uid("u"), name: UI.val(f, "name"), role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id });
+      const person = { id: CryptoUtil.uid("u"), name: UI.val(f, "name"), role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id };
+      Store.data.users.push(person);
+      Store.addOwner(person);
       Store.log("create", "user", "", UI.val(f, "name"));
       Store.save();
       UI.toast("Person added");
@@ -1445,7 +1472,9 @@ const App = {
     };
     document.querySelectorAll("[data-delu]").forEach((b) => b.onclick = () => {
       if (!UI.confirm("Remove this person?")) return;
-      Store.data.users = Store.data.users.filter((u) => u.id !== b.getAttribute("data-delu"));
+      const id = b.getAttribute("data-delu");
+      Store.data.users = Store.data.users.filter((u) => u.id !== id);
+      Store.data.owners = (Store.data.owners || []).filter((o) => o.id !== id);
       Store.save();
       this.renderSettings();
     });
@@ -1459,7 +1488,7 @@ const App = {
     if (!pending) return;
     const admin = Auth.user();
     const now = new Date().toISOString();
-    Store.data.users.push({
+    const person = {
       id: CryptoUtil.uid("u"),
       name: pending.name,
       firstName: pending.firstName,
@@ -1471,7 +1500,9 @@ const App = {
       createdBy: admin.id,
       approvedBy: admin.id,
       approvedAt: now
-    });
+    };
+    Store.data.users.push(person);
+    Store.addOwner(person);
     Store.data.pendingUsers = Store.data.pendingUsers.filter((p) => p.id !== id);
     Store.log("approve", "user", "", admin.name + " approved " + pending.name);
     Store.save();

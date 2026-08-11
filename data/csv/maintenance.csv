@@ -1,5 +1,1 @@
 ﻿id,title,category,priority,status,reporter,date,assignedContractorId,estimatedCompletion
-m-shutter,Bedroom 2 shutter stuck,Furniture,important,assigned,u-claire,2026-07-16,c-build,2026-09-16
-m-filter,Pool filter noisy,Pool,urgent,progress,u-admin,2026-08-05,c-pool,2026-09-16
-m-wifi,Wi-Fi drops in the annex,Electrical,minor,reviewed,u-guest,2026-08-10,,
-m-light,Terrace spot light out,Electrical,minor,completed,u-claire,2026-05-24,c-elec,2026-06-18

@@ -1,13 +1,10 @@
 ﻿id,kind,name,town,cuisine,rating,phone,address,notes
-r-camille,restaurant,Chez Camille,La Croix-Valmer,Seafood,5,+33 4 94 79 59 26,"Plage de Gigaro, 83420 La Croix-Valmer",Feet in the sand at Gigaro. Book ahead in summer.
-r-escale,restaurant,L'Escale,La Croix-Valmer,Provençal,4,+33 4 94 79 67 11,Port de La Croix-Valmer,"Simple, good for a quiet supper in the village."
-r-club55,restaurant,Club 55,Ramatuelle,Beach,4,+33 4 94 55 55 55,"Plage de Pampelonne, 83350 Ramatuelle","Famous and busy. Treat, not a weekly habit."
-r-gassin,restaurant,Le Micocoulier,Gassin,French,5,+33 4 94 56 14 01,"Place de la Mairie, 83580 Gassin","Village square, sunset over the gulf."
-r-pizza,restaurant,Villa Mezza,Cavalaire-sur-Mer,Pizza,4,+33 4 94 64 22 90,"Avenue des Alliés, 83240 Cavalaire-sur-Mer",Easy with children. Takeaway possible.
-p-gigaro,beach,Plage de Gigaro,La Croix-Valmer,,5,,Boulevard de Gigaro,"Family beach, pines, easy parking early. Walk or five minutes by car."
-p-pampelonne,beach,Plage de Pampelonne,Ramatuelle,,4,,Route des Plages,Long sand. Busy in August. Public stretches between the clubs.
-p-gassin,attraction,Gassin village,Gassin,,5,,"Place de la Mairie, 83580 Gassin",One of the Plus Beaux Villages. Sunset over the gulf. Park below and walk up.
-p-citadelle,attraction,Citadelle de Saint-Tropez,Saint-Tropez,,4,+33 4 94 97 59 43,1 Montée de la Citadelle,Views and a small museum. Go early before the port fills.
-p-superu,shop,Super U Cavalaire,Cavalaire-sur-Mer,,4,,Avenue des Alliés,Main weekly shop. Better prices than the village.
-p-market,shop,Marché de La Croix-Valmer,La Croix-Valmer,,5,,Place des Frères Olivier,"Sunday morning market. Fruit, cheese, flowers. Cash useful."
-p-pharma,other,Pharmacie de La Croix-Valmer,La Croix-Valmer,,4,+33 4 94 79 60 22,Avenue de Lyon,Village chemist. Check Sunday rota on the door.
+r-camille,restaurant,Chez Camille,La Croix-Valmer,Seafood,0,+33 4 94 79 59 26,"Plage de Gigaro, 83420 La Croix-Valmer",Well-known beach restaurant at Gigaro. Book ahead in summer.
+r-club55,restaurant,Club 55,Ramatuelle,Beach,0,+33 4 94 55 55 55,"Plage de Pampelonne, 83350 Ramatuelle",Famous Pampelonne beach club. Busy in August.
+p-gigaro,beach,Plage de Gigaro,La Croix-Valmer,,0,,Boulevard de Gigaro,"Family beach, pines, easier parking early. Walk or a few minutes by car."
+p-pampelonne,beach,Plage de Pampelonne,Ramatuelle,,0,,Route des Plages,Long sand. Busy in August. Public stretches between the clubs.
+p-gassin,attraction,Gassin village,Gassin,,0,,"Place de la Mairie, 83580 Gassin",One of the Plus Beaux Villages. Sunset over the gulf. Park below and walk up.
+p-citadelle,attraction,Citadelle de Saint-Tropez,Saint-Tropez,,0,+33 4 94 97 59 43,1 Montée de la Citadelle,Views and a small museum. Go early before the port fills.
+p-superu,shop,Super U Cavalaire,Cavalaire-sur-Mer,,0,,Avenue des Alliés,Main supermarket for a weekly shop.
+p-market,shop,Marché de La Croix-Valmer,La Croix-Valmer,,0,,Place des Frères Olivier,"Sunday morning market. Fruit, cheese, flowers. Cash useful."
+p-pharma,other,Pharmacie de La Croix-Valmer,La Croix-Valmer,,0,+33 4 94 79 60 22,Avenue de Lyon,Village chemist. Check Sunday rota on the door.

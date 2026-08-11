@@ -1,5 +1,5 @@
 const Store = {
-  key: "tfh-draft",
+  key: "tfh-draft-v2",
   data: null,
   dirty: false,
   source: "repo",
@@ -113,6 +113,14 @@ const Store = {
 
   ownerList() {
     return (this.data.owners || []).slice();
+  },
+
+  addOwner(user) {
+    if (!user || !user.id) return;
+    if (user.role === "guest") return;
+    this.data.owners = this.data.owners || [];
+    if (this.data.owners.some((o) => o.id === user.id)) return;
+    this.data.owners.push({ id: user.id, name: user.name });
   },
 
   pound(n) {

@@ -1,13 +1,13 @@
-﻿id,from,to,airline,direct,durationMin,price,stops
-lgw-nce,LGW,NCE,easyJet,True,115,68,0
-lhr-nce,LHR,NCE,British Airways,True,125,142,0
-stn-nce,STN,NCE,Ryanair,True,120,49,0
-lcy-nce,LCY,NCE,British Airways,True,125,168,0
-lgw-mrs,LGW,MRS,easyJet,True,120,55,0
-stn-mrs,STN,MRS,Ryanair,True,125,42,0
-lhr-mrs,LHR,MRS,Air France,False,260,118,1
-lcy-mrs,LCY,MRS,Air France,False,310,195,1
-lgw-tln,LGW,TLN,easyJet,True,130,79,0
-lhr-tln,LHR,TLN,Air France,False,300,156,1
-stn-tln,STN,TLN,Ryanair + transfer,False,360,89,1
-lcy-tln,LCY,TLN,Air France,False,390,210,1
+﻿id,from,to,airline,direct,durationMin,stops
+lgw-nce,LGW,NCE,easyJet,True,115,0
+lhr-nce,LHR,NCE,British Airways,True,125,0
+stn-nce,STN,NCE,Ryanair,True,120,0
+lcy-nce,LCY,NCE,British Airways,True,125,0
+lgw-mrs,LGW,MRS,easyJet,True,120,0
+stn-mrs,STN,MRS,Ryanair,True,125,0
+lhr-mrs,LHR,MRS,Air France,False,260,1
+lcy-mrs,LCY,MRS,Air France,False,310,1
+lgw-tln,LGW,TLN,easyJet,True,130,0
+lhr-tln,LHR,TLN,Air France,False,300,1
+stn-tln,STN,TLN,Ryanair + transfer,False,360,1
+lcy-tln,LCY,TLN,Air France,False,390,1
