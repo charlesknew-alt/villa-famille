@@ -5,9 +5,9 @@
   "jsonBlobUrl": "https://jsonblob.com/api/jsonBlob/019ff15c-4188-76c2-b7ee-8fb7c20316e8",
   "note": "Family users/bookings auto-save here (browser GET+PUT). FamilySync must be assigned to window. pinDisplay must stay on each user.",
   "emailjs": {
-    "publicKey": "",
-    "serviceId": "",
-    "templateId": "",
-    "setup": "Create a free EmailJS account, add an email service + template with to_email, to_name, subject, message fields, then paste the three ids here so booking alerts can send."
+    "publicKey": "0rxX1z_w5bmTDZRU8",
+    "serviceId": "service_qqq7jsf",
+    "templateId": "template_wzfltio",
+    "setup": "EmailJS is configured. Template fields: to_email, to_name, subject, message, reply_to."
   }
 }
