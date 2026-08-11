@@ -54,13 +54,14 @@ const Auth = {
     const until = this.lockedUntil();
     if (until) return { ok: false, locked: until };
     const clean = String(pin || "").replace(/\D/g, "");
-    if (clean.length < 4 || clean.length > 6) return { ok: false, error: "PIN is 4 to 6 digits." };
+    if (clean.length !== 4) return { ok: false, error: "PIN is 4 digits." };
     for (const user of Store.data.users || []) {
       const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
       if (hash === user.pinHash) {
         this.current = user;
         localStorage.setItem(this.sessionKey, user.id);
         this.recordOk();
+        Store.syncPending();
         Store.log("login", "user", user.id, user.name + " signed in");
         Store.save();
         return { ok: true, user };

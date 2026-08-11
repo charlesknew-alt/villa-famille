@@ -28,7 +28,7 @@
         </svg>
         <p class="eyebrow">South of France</p>
         <h1>The Family House</h1>
-        <p class="login-sub">A family house near La Croix-Valmer, on the Gulf of Saint-Tropez. Enter your PIN to come in.</p>
+        <p class="login-sub">A family house near La Croix-Valmer, on the Gulf of Saint-Tropez. Enter your 4-digit PIN to come in.</p>
       </div>
 
       <div id="login-pin-panel">
@@ -50,12 +50,12 @@
 
       <div id="login-signup-panel" hidden>
         <h2>Create your PIN</h2>
-        <p class="login-sub">Name, surname, and a 6-digit PIN. You will not get in yet — the house admin must approve you.</p>
+        <p class="login-sub">Name, surname, and a 4-digit PIN. You will not get in yet — the house admin must approve you.</p>
         <p id="signup-error" class="pin-error" hidden></p>
         <form id="signup-form" class="signup-fields">
           <label class="field"><span>Name</span><input name="firstName" autocomplete="given-name" required></label>
           <label class="field"><span>Surname</span><input name="lastName" autocomplete="family-name" required></label>
-          <label class="field"><span>6-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+          <label class="field"><span>4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required></label>
           <button class="btn primary create-pin-btn" type="submit">Send request</button>
           <button class="btn create-pin-btn" type="button" data-login-back>Back to PIN</button>
         </form>
@@ -64,8 +64,11 @@
       <div id="login-signup-done" hidden>
         <div class="signup-done">
           <h2>Almost there</h2>
-          <p>Ask the house admin to approve you.</p>
-          <button class="btn primary create-pin-btn" type="button" data-login-back>Back to PIN</button>
+          <p>Ask the house admin to open Approvals on this same phone, or copy the slip below for another computer.</p>
+          <p id="signup-code" class="login-sub"></p>
+          <label class="field"><span>Request slip</span><textarea id="signup-slip" rows="3" readonly></textarea></label>
+          <button class="btn primary create-pin-btn" type="button" id="copy-slip-btn">Copy slip</button>
+          <button class="btn create-pin-btn" type="button" data-login-back>Back to PIN</button>
         </div>
       </div>
     </div>
@@ -113,7 +116,6 @@
           <a href="#guide" data-nav="guide">Local</a>
           <a href="#expenses" data-nav="expenses">Expenses</a>
           <a href="#ideas" data-nav="ideas">Ideas</a>
-          <a href="#announcements" data-nav="announcements">News</a>
           <a href="#settings" data-nav="settings">Settings</a>
         </nav>
         <p class="nav-note">Calendar and bookings live in data/house.json on GitHub. This browser only holds a draft until you save that file back.</p>

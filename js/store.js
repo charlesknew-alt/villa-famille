@@ -1,5 +1,7 @@
 const Store = {
   key: "tfh-draft-v2",
+  pendingKey: "tfh-pending",
+  ghKey: "tfh-gh",
   data: null,
   dirty: false,
   source: "repo",
@@ -25,6 +27,7 @@ const Store = {
     if (!repo && window.HOUSE_DATA) repo = window.HOUSE_DATA;
     this.data = Object.assign(this.empty(), repo || {});
     this.normalize();
+    const repoPending = (this.data.pendingUsers || []).slice();
     const draft = sessionStorage.getItem(this.key);
     if (draft) {
       try {
@@ -36,10 +39,18 @@ const Store = {
         }
       } catch (_) { /* ignore bad draft */ }
     }
+    this.normalize();
+    this.mergePending(repoPending);
+    this.mergePending(this.readLocalPending());
+    this.mergePending(this.readDraftPending());
+    this.persistPending(true);
     return this.data;
   },
 
   save() {
+    this.data.pendingUsers = this.data.pendingUsers || [];
+    this.mergePending(this.readLocalPending());
+    this.persistPending(true);
     this.data.settings = this.data.settings || {};
     this.data.settings.updatedAt = new Date().toISOString();
     this.dirty = true;
@@ -54,8 +65,107 @@ const Store = {
     if (window.App) App.syncSaveChip();
   },
 
+  readLocalPending() {
+    try {
+      const raw = localStorage.getItem(this.pendingKey);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter((p) => p && p.id) : [];
+    } catch (_) { return []; }
+  },
+
+  readDraftPending() {
+    try {
+      const raw = sessionStorage.getItem(this.key);
+      const parsed = raw ? JSON.parse(raw) : null;
+      const list = parsed && parsed.pendingUsers;
+      return Array.isArray(list) ? list.filter((p) => p && p.id) : [];
+    } catch (_) { return []; }
+  },
+
+  persistPending(replace) {
+    if (!replace) this.mergePending(this.readLocalPending());
+    try {
+      localStorage.setItem(this.pendingKey, JSON.stringify(this.data.pendingUsers || []));
+    } catch (_) { /* private mode */ }
+  },
+
+  mergePending(extra) {
+    const byId = {};
+    const add = (p) => {
+      if (!p || !p.id) return;
+      if (!byId[p.id]) byId[p.id] = p;
+    };
+    (this.data.pendingUsers || []).forEach(add);
+    (extra || []).forEach(add);
+    this.data.pendingUsers = Object.keys(byId).map((k) => byId[k]);
+  },
+
+  syncPending() {
+    if (!this.data) this.data = this.empty();
+    this.data.pendingUsers = this.data.pendingUsers || [];
+    this.mergePending(this.readLocalPending());
+    this.mergePending(this.readDraftPending());
+    this.persistPending(true);
+    return this.data.pendingUsers;
+  },
+
+  addPending(person) {
+    this.syncPending();
+    this.mergePending([person]);
+    this.persistPending(true);
+    this.save();
+    return person;
+  },
+
+  importPendingSlip(text) {
+    const raw = String(text || "").trim();
+    if (!raw) throw new Error("Paste the request slip first.");
+    let obj = null;
+    try { obj = JSON.parse(raw); } catch (_) {
+      try { obj = JSON.parse(decodeURIComponent(escape(atob(raw)))); } catch (e) {
+        throw new Error("Could not read that request slip.");
+      }
+    }
+    if (Array.isArray(obj)) obj = obj[0];
+    if (!obj || !obj.id || !obj.pinHash || !obj.pinSalt) throw new Error("That slip is missing PIN details.");
+    obj.name = obj.name || ((obj.firstName || "") + " " + (obj.lastName || "")).trim();
+    this.addPending(obj);
+    return obj;
+  },
+
+  removePending(id) {
+    this.syncPending();
+    this.data.pendingUsers = (this.data.pendingUsers || []).filter((p) => p.id !== id);
+    this.persistPending(true);
+  },
+
+  ghCreds() {
+    try {
+      const raw = localStorage.getItem(this.ghKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  },
+
+  setGhCreds(token, repo) {
+    try {
+      if (token && repo) localStorage.setItem(this.ghKey, JSON.stringify({ token: String(token), repo: String(repo) }));
+    } catch (_) { /* private mode */ }
+  },
+
+  async tryPushIfAuthed() {
+    const creds = this.ghCreds();
+    if (!creds || !creds.token || !creds.repo) return false;
+    const parts = String(creds.repo).split("/");
+    if (parts.length < 2) return false;
+    try {
+      await this.saveToGitHub(creds.token, parts[0], parts[1], "main");
+      return true;
+    } catch (_) { return false; }
+  },
+
   log(action, entity, entityId, detail) {
     const user = Auth.user();
+    this.data.activity = this.data.activity || [];
     this.data.activity.unshift({
       id: CryptoUtil.uid("act"),
       action, entity, entityId: entityId || "",
@@ -68,7 +178,10 @@ const Store = {
 
   normalize() {
     const d = this.data;
+    d.users = d.users || [];
     d.pendingUsers = d.pendingUsers || [];
+    d.activity = d.activity || [];
+    d.bookings = d.bookings || [];
     d.places = d.places || [];
     d.owners = d.owners || [];
     d.schools = d.schools || [];

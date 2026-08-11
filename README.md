@@ -35,20 +35,22 @@ If a double-click does not load the house data, open a terminal in this folder a
 
 ## PINs (family setup)
 
-There is one house admin PIN to start. New people tap **Create your PIN** on the login screen (name, surname, 6-digit PIN). They do not get in yet. The house admin approves or declines the request in **Settings → Approvals**. Same first + last name cannot request twice.
+There is one house admin PIN to start. New people tap **Create your PIN** on the login screen (name, surname, 4-digit PIN). They do not get in yet. The house admin approves or declines the request in **Settings → Approvals**. Same first + last name cannot request twice.
+
+Signup requests are kept in `pendingUsers` and also in this browser’s `localStorage` (`tfh-pending`). Approvals and the signup form read that same merged list. That survives a refresh on the same phone. It cannot jump to another device by itself — copy the request slip and paste it under Approvals, or **Add person** with a 4-digit PIN.
 
 PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never saved. The login screen does not list family PINs.
 
 ## What is in the app
 
-- **Calendar** — the main feature. Green = free, blue = booked, red = blocked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house. The booking form opens easyJet / BA / Google Flights / Skyscanner for those exact dates.
+- **Calendar** — the main feature. Green = free, red = booked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house. The booking form opens easyJet / BA / Google Flights / Skyscanner for those exact dates.
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
 - **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
 - **Travel** — Skyscanner search is built into the Travel page (and the booking form). Pick dates, search live prices on this site, then compare BA / easyJet / others. Airline buttons are still there if you want the carrier site.
 - **School holidays** — Seaford College, King Edward’s Woking and Greenfield Woking families have priority in typical 2025–2027 independent-school holidays. Admin can edit the dates in Settings.
 - **Local guide** — real well-known places near La Croix-Valmer and Gigaro. Stars, comments, photos, replies once the family adds them.
 - **Expenses** — GBP, who paid, receipts, personal vs shared. Shared bills split equally across the owners list. Settle up when reimbursed.
-- News, ideas, search, dark mode, activity log.
+- Ideas, search, dark mode, activity log.
 
 The house starts empty: no sample stays, bills or made-up people. Add the family with **Create your PIN**.
 

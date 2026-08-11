@@ -26,7 +26,14 @@ const App = {
     };
     document.getElementById("save-banner-btn").onclick = () => this.openSave();
     document.querySelectorAll("[data-nav]").forEach((a) => {
-      a.addEventListener("click", () => document.getElementById("sidenav").classList.remove("open"));
+      a.addEventListener("click", (e) => {
+        document.getElementById("sidenav").classList.remove("open");
+        const href = a.getAttribute("href") || "";
+        if (href && (location.hash || "#") === href) {
+          e.preventDefault();
+          this.route();
+        }
+      });
     });
   },
 
@@ -51,6 +58,7 @@ const App = {
     document.getElementById("app").hidden = false;
     const u = Auth.user();
     document.getElementById("who-chip").textContent = u.name + " · " + u.role;
+    Store.syncPending();
     this.syncSaveChip();
     this.route();
   },
@@ -69,10 +77,33 @@ const App = {
       if (!k) return;
       if (Auth.lockedUntil()) { this.tickLock(); return; }
       if (k === "clear") this.pin = this.pin.slice(0, -1);
-      else if (k === "ok") await this.submitPin();
-      else if (this.pin.length < 6) this.pin += k;
+      else if (k === "ok") {
+        if (this.pin.length === 4) await this.submitPin();
+      } else if (this.pin.length < 4) {
+        this.pin += k;
+        this.drawDots();
+        if (this.pin.length === 4) await this.submitPin();
+        return;
+      }
       this.drawDots();
     };
+    if (!this._pinKeys) {
+      this._pinKeys = true;
+      document.addEventListener("keydown", (e) => {
+        if (document.getElementById("login-screen").hidden) return;
+        if (document.getElementById("login-pin-panel").hidden) return;
+        if (Auth.lockedUntil()) return;
+        if (e.key === "Enter" && this.pin.length === 4) this.submitPin();
+        else if (e.key === "Backspace") {
+          this.pin = this.pin.slice(0, -1);
+          this.drawDots();
+        } else if (/^\d$/.test(e.key) && this.pin.length < 4) {
+          this.pin += e.key;
+          this.drawDots();
+          if (this.pin.length === 4) this.submitPin();
+        }
+      });
+    }
   },
 
   drawDots() {
@@ -124,6 +155,20 @@ const App = {
     document.querySelectorAll("[data-login-back]").forEach((b) => {
       b.onclick = () => this.showLoginPanels("pin");
     });
+    const copyBtn = document.getElementById("copy-slip-btn");
+    if (copyBtn) copyBtn.onclick = async () => {
+      const slip = document.getElementById("signup-slip");
+      const text = slip ? slip.value : "";
+      if (!text) return UI.toast("No slip to copy yet.");
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+        else { slip.focus(); slip.select(); document.execCommand("copy"); }
+        UI.toast("Slip copied. Admin can paste it under Approvals.");
+      } catch (_) {
+        if (slip) { slip.focus(); slip.select(); }
+        UI.toast("Copy failed — select the slip and copy it.");
+      }
+    };
     if (form) form.onsubmit = (e) => {
       e.preventDefault();
       this.submitSignup(form);
@@ -142,7 +187,7 @@ const App = {
   nameTaken(first, last) {
     const key = this.normName(first, last);
     const users = Store.data.users || [];
-    const pending = Store.data.pendingUsers || [];
+    const pending = Store.syncPending();
     return users.some((u) => this.personNameKey(u) === key) ||
       pending.some((p) => this.personNameKey(p) === key);
   },
@@ -152,25 +197,49 @@ const App = {
     const last = UI.val(form, "lastName");
     const pin = UI.val(form, "pin").replace(/\D/g, "");
     const err = document.getElementById("signup-error");
-    const showErr = (msg) => { err.hidden = false; err.textContent = msg; };
-    if (!first || !last) return showErr("Please enter your name and surname.");
-    if (!/^\d{6}$/.test(pin)) return showErr("PIN must be 6 digits.");
-    if (this.nameTaken(first, last)) return showErr("That name already has an account or a request waiting.");
-    const salt = CryptoUtil.randomSalt();
-    Store.data.pendingUsers = Store.data.pendingUsers || [];
-    Store.data.pendingUsers.push({
-      id: CryptoUtil.uid("p"),
-      firstName: first,
-      lastName: last,
-      name: first + " " + last,
-      pinSalt: salt,
-      pinHash: await CryptoUtil.hashPin(pin, salt),
-      requestedAt: new Date().toISOString()
-    });
-    Store.log("request", "user", "", first + " " + last + " asked for a PIN");
-    Store.save();
-    form.reset();
-    this.showLoginPanels("done");
+    const btn = form.querySelector('button[type="submit"]');
+    const showErr = (msg) => {
+      if (err) { err.hidden = false; err.textContent = msg; }
+      UI.toast(msg);
+    };
+    if (btn) btn.disabled = true;
+    try {
+      if (!first || !last) return showErr("Please enter your name and surname.");
+      if (!/^\d{4}$/.test(pin)) return showErr("PIN must be 4 digits.");
+      if (this.nameTaken(first, last)) return showErr("That name already has an account or a request waiting.");
+      const salt = CryptoUtil.randomSalt();
+      const id = CryptoUtil.uid("p");
+      const person = {
+        id,
+        firstName: first,
+        lastName: last,
+        name: first + " " + last,
+        pinSalt: salt,
+        pinHash: await CryptoUtil.hashPin(pin, salt),
+        requestedAt: new Date().toISOString()
+      };
+      Store.log("request", "user", "", person.name + " asked for a PIN");
+      Store.addPending(person);
+      const code = String(first).replace(/\s+/g, "").toUpperCase() + "-" + id.slice(-2).toUpperCase();
+      const slip = JSON.stringify(person);
+      const codeEl = document.getElementById("signup-code");
+      if (codeEl) {
+        codeEl.innerHTML = "Request code: <b>" + UI.esc(code) + "</b>. Ask the admin to open Approvals on this phone, or copy this slip for another computer.";
+      }
+      const slipBox = document.getElementById("signup-slip");
+      if (slipBox) slipBox.value = slip;
+      form.reset();
+      this.showLoginPanels("done");
+      UI.toast("Request sent. Ask the admin to open Approvals.");
+      Store.tryPushIfAuthed().then((ok) => {
+        Store.syncPending();
+        if (ok) UI.toast("Request also saved to the house file.");
+      }).catch(() => {});
+    } catch (ex) {
+      showErr((ex && ex.message) ? ex.message : "Could not send the request. Please try again.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   },
 
   route() {
@@ -192,7 +261,7 @@ const App = {
       guide: () => this.renderGuide(),
       expenses: () => this.renderExpenses(),
       ideas: () => this.renderIdeas(),
-      announcements: () => this.renderNews(),
+      announcements: () => this.renderDashboard(),
       settings: () => this.renderSettings(),
       search: () => this.renderSearch(),
       documents: () => { this.houseTab = "docs"; this.renderHouse(); },
@@ -223,7 +292,6 @@ const App = {
     const next = Store.upcomingBookings().slice(0, 4);
     const open = Store.openIssues();
     const due = Store.dueRecurring();
-    const news = (d.announcements || []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
     const recentFix = (d.maintenance || []).filter((m) => m.status === "completed").slice(0, 3);
     const docs = (d.documents || []).slice(0, 3);
     const view = document.getElementById("view");
@@ -246,12 +314,9 @@ const App = {
           '<p><a href="#maintenance">All issues</a></p></div>' +
         '<div class="card"><h3>Due around the house</h3>' + this.recurringList(due.length ? due : d.recurring.slice(0, 3)) + "</div>" +
       "</div>" +
-      '<div class="grid two" style="margin-top:16px">' +
-        '<div class="card"><h3>News</h3>' + news.map((a) => "<div class='row'><div><b>" + UI.esc(a.title) + "</b><div class='muted'>" + UI.esc(a.body) + "</div></div></div>").join("") + "</div>" +
-        '<div class="card"><h3>Travel</h3><p>London to Nice, Marseille or Toulon — then a short drive to La Croix-Valmer.</p>' +
-          '<div class="quick-links"><a href="#travel">Compare flights</a></div>' +
-          '<p class="muted" id="travel-hint">Most convenient is often Gatwick → Toulon (direct), then about an hour by car.</p></div>' +
-      "</div>" +
+      '<div class="card" style="margin-top:16px"><h3>Travel</h3><p>London to Nice, Marseille or Toulon — then a short drive to La Croix-Valmer.</p>' +
+        '<div class="quick-links"><a href="#travel">Compare flights</a></div>' +
+        '<p class="muted" id="travel-hint">Most convenient is often Gatwick → Toulon (direct), then about an hour by car.</p></div>' +
       '<div class="grid two" style="margin-top:16px">' +
         '<div class="card"><h3>Recent repairs</h3>' + (recentFix.length ? recentFix.map((m) => "<div class='row'><span>" + UI.esc(m.title) + "</span><span class='chip done'>Done</span></div>").join("") : "<p class='empty'>None yet.</p>") + "</div>" +
         '<div class="card"><h3>Documents</h3>' + docs.map((doc) => "<div class='row'><a href='#house'>" + UI.esc(doc.title) + "</a><span class='chip'>" + UI.esc(doc.category) + "</span></div>").join("") + "</div>" +
@@ -264,6 +329,7 @@ const App = {
       e.preventDefault(); location.hash = "calendar"; setTimeout(() => this.bookingForm(), 50);
     });
     const w = await UI.weather();
+    if (this.view !== "dashboard") return;
     const box = document.getElementById("weather-card");
     if (box) {
       if (!w || !w.current) box.innerHTML = "<h3>Weather · La Croix-Valmer</h3><p class='muted'>Weather unavailable offline — try again when you have a signal.</p>";
@@ -271,11 +337,12 @@ const App = {
         (w.daily ? " · High " + Math.round(w.daily.temperature_2m_max[0]) + "° / low " + Math.round(w.daily.temperature_2m_min[0]) + "°" : "") + "</p>";
     }
     Flights.getFares().then((fares) => {
+      if (this.view !== "dashboard") return;
       const h = Flights.highlights(fares);
       const el = document.getElementById("travel-hint");
       if (el && h.convenient) el.textContent = "Suggested: " + h.convenient.from + " → " + h.convenient.to + " with " + h.convenient.airline +
         (h.convenient.direct ? " (direct)" : "") + ". Drive " + h.convenient.drive.label + ".";
-    });
+    }).catch(() => {});
   },
 
   holidayDashNote() {
@@ -316,10 +383,11 @@ const App = {
       "<span>These dates are a school holiday. I have picked other dates if I can, or I understand a school family / the house admin may need to confirm.</span></label>";
   },
 
-  costBoxHtml(est, arrival, departure) {
+  costBoxHtml(est, arrival, departure, guests) {
     const out = arrival || UI.today();
     const back = departure || UI.addDays(out, 7);
-    const links = (est && est.links) || Flights.liveLinks("LGW", "TLN", out, back, 2);
+    const n = Flights.adults(guests || (est && est.guests) || 2);
+    const links = (est && est.links) || Flights.liveLinks("LGW", "TLN", out, back, n);
     let body = '<p>Search live prices on Skyscanner below for these dates.</p>';
     if (est && est.live && est.lowPp) {
       body = "<p>About <b>£" + est.lowPp + (est.highPp && est.highPp !== est.lowPp ? "–£" + est.highPp : "") +
@@ -377,10 +445,10 @@ const App = {
     if (!this.cal.cursor) this.cal.cursor = UI.today().slice(0, 7) + "-01";
     const mode = this.cal.mode;
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Calendar", "Green free · Blue booked · Red blocked · Gold flag = school holiday",
-      (Auth.canEdit() ? '<button class="btn primary" id="add-stay" type="button">Add stay</button><button class="btn" id="add-block" type="button">Block dates</button>' : "")) +
+    view.innerHTML = this.head("Calendar", "Green free · Red booked · Gold flag = school holiday",
+      (Auth.canEdit() ? '<button class="btn primary" id="add-stay" type="button">Add stay</button>' : "")) +
       this.holidayDashNote() +
-      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch blocked"></i>Blocked</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
+      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
       '<div class="filters"><div class="seg">' +
         ["month","week","list"].map((m) => '<button type="button" data-mode="' + m + '" class="' + (mode === m ? "on" : "") + '">' + m[0].toUpperCase() + m.slice(1) + "</button>").join("") +
       '</div><div class="actions"><button class="btn ghost" id="cal-prev" type="button">Back</button><button class="btn ghost" id="cal-today" type="button">Today</button><button class="btn ghost" id="cal-next" type="button">Next</button></div></div>' +
@@ -392,8 +460,6 @@ const App = {
     document.getElementById("cal-today").onclick = () => { this.cal.cursor = UI.today().slice(0, 7) + "-01"; this.renderCalendar(); };
     const add = document.getElementById("add-stay");
     if (add) add.onclick = () => this.bookingForm();
-    const blk = document.getElementById("add-block");
-    if (blk) blk.onclick = () => this.bookingForm({ status: "blocked" });
     this.afterRender();
   },
 
@@ -415,7 +481,7 @@ const App = {
     const all = (Store.data.bookings || []).slice().sort((a, b) => b.arrival.localeCompare(a.arrival));
     hist.innerHTML = all.length ? '<table class="table"><tr><th>Dates</th><th>Who</th><th>Status</th><th></th></tr>' +
       all.map((b) => "<tr><td>" + UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + "</td><td>" + UI.esc(b.guests || b.notes || "—") +
-        "</td><td><span class='chip " + (b.status === "blocked" ? "open" : b.status === "cancelled" ? "rejected" : "done") + "'>" + b.status +
+        "</td><td><span class='chip " + (b.status === "cancelled" ? "rejected" : "done") + "'>" + (b.status === "blocked" ? "booked" : b.status) +
         "</span></td><td><button class='text-btn' data-open='" + b.id + "'>Open</button></td></tr>").join("") + "</table>"
       : "<p class='empty'>No stays yet.</p>";
     body.querySelectorAll("[data-day]").forEach((el) => el.onclick = () => this.onDay(el.getAttribute("data-day")));
@@ -433,7 +499,7 @@ const App = {
     for (let i = 0; i < firstDow; i++) html += '<div class="cal-day out"></div>';
     for (let day = 1; day <= days; day++) {
       const iso = start.toISOString().slice(0, 8) + String(day).padStart(2, "0");
-      const st = Store.dayStatus(iso);
+      const st = Store.dayStatus(iso) === "blocked" ? "booked" : Store.dayStatus(iso);
       const hol = Store.holidayOn(iso);
       const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
       html += '<div class="cal-day ' + st + (hol ? " holiday" : "") + (iso === UI.today() ? " today" : "") + '" data-day="' + iso + '"><b>' + day +
@@ -453,7 +519,7 @@ const App = {
       const iso = d.toISOString().slice(0, 10);
       const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
       const hol = Store.holidayOn(iso);
-      html += '<div class="cal-day week-col ' + Store.dayStatus(iso) + (hol ? " holiday" : "") + '" data-day="' + iso + '"><b>' +
+      html += '<div class="cal-day week-col ' + (Store.dayStatus(iso) === "blocked" ? "booked" : Store.dayStatus(iso)) + (hol ? " holiday" : "") + '" data-day="' + iso + '"><b>' +
         d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
         (hol ? ' <span class="cal-flag">H</span>' : "") + "</b>" +
         stays.map((b) => "<div class='cal-pill' data-open='" + b.id + "'>" + UI.esc(b.guests || b.notes || b.status) + "</div>").join("") +
@@ -469,7 +535,7 @@ const App = {
     const past = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.departure < t).sort((a, b) => b.arrival.localeCompare(a.arrival));
     const block = (title, rows) => "<div class='card' style='margin-bottom:12px'><h3>" + title + "</h3>" +
       (rows.length ? rows.map((b) => "<div class='row'><div><b>" + UI.esc(b.guests || b.notes || "Stay") + "</b><div class='muted'>" +
-        UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests · " + b.status +
+        UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests · " + (b.status === "blocked" ? "booked" : b.status) +
         (Store.holidaysOverlapping(b.arrival, b.departure).length ? " · school holiday" : "") +
         "</div></div><button class='btn' data-open='" + b.id + "'>Open</button></div>").join("") : "<p class='empty'>None</p>") + "</div>";
     return block("Coming up", future) + block("Past", past);
@@ -486,10 +552,10 @@ const App = {
     const b = Store.data.bookings.find((x) => x.id === id);
     if (!b) return;
     const rec = (Store.data.checklistRecords || []).find((r) => r.bookingId === b.id);
-    UI.modal((b.status === "blocked" ? "Blocked" : "Stay") + " · " + UI.fmt(b.arrival),
+    UI.modal("Stay · " + UI.fmt(b.arrival),
       this.holidayBannerHtml(b.arrival, b.departure) +
       "<p><b>" + UI.esc(b.guests || "—") + "</b></p><p>" + UI.fmt(b.arrival) + " → " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests</p>" +
-      "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + b.status + "</p>" +
+      "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + (b.status === "blocked" ? "booked" : b.status) + "</p>" +
       (rec ? "<p>Departure checklist completed " + UI.fmtTime(rec.completedAt) + ".</p>" : "<p><a href='#house'>Open departure checklist</a></p>"),
       '<div class="actions">' +
         (Auth.canEdit() && b.status !== "cancelled" ? '<button class="btn" id="ed-b">Edit</button>' : "") +
@@ -513,31 +579,36 @@ const App = {
 
   bookingForm(existing) {
     const b = existing || { arrival: UI.today(), departure: UI.addDays(UI.today(), 7), guestCount: 2, guests: "", notes: "", status: "booked" };
-    UI.modal(existing && existing.id ? "Edit stay" : (b.status === "blocked" ? "Block dates" : "New stay"),
+    UI.modal(existing && existing.id ? "Edit stay" : "New stay",
       '<form id="bk-form">' +
         '<div class="field-row"><label class="field"><span>Arrival</span><input name="arrival" type="date" value="' + UI.esc(b.arrival || "") + '" required></label>' +
         '<label class="field"><span>Departure</span><input name="departure" type="date" value="' + UI.esc(b.departure || "") + '" required></label></div>' +
         '<div id="bk-hol">' + this.holidayBannerHtml(b.arrival, b.departure) + "</div>" +
-        '<div id="bk-cost" class="cost-box"><p class="guide-price">Flights for these dates</p><p class="muted">Preparing airline links…</p></div>' +
+        this.costBoxHtml(null, b.arrival, b.departure, b.guestCount) +
         '<label class="field"><span>Who is staying</span><input name="guests" value="' + UI.esc(b.guests || "") + '" placeholder="Names"></label>' +
         '<label class="field"><span>Guest count</span><input name="guestCount" type="number" min="0" value="' + (b.guestCount || 0) + '"></label>' +
         '<label class="field"><span>Notes</span><textarea name="notes" rows="3">' + UI.esc(b.notes || "") + "</textarea></label>" +
-        (Auth.isAdmin() ? '<label class="field"><span>Type</span><select name="status"><option value="booked"' + (b.status !== "blocked" ? " selected" : "") + ">Booked</option><option value='blocked'" + (b.status === "blocked" ? " selected" : "") + ">Blocked / unavailable</option></select></label>" : '<input type="hidden" name="status" value="' + UI.esc(b.status || "booked") + '">') +
-        '<div id="bk-ack-slot">' + this.holidayAckHtml(b.arrival, b.departure, b.status) + "</div>" +
+        '<input type="hidden" name="status" value="booked">' +
+        '<div id="bk-ack-slot">' + this.holidayAckHtml(b.arrival, b.departure, "booked") + "</div>" +
         '<div id="bk-warn" class="pin-error" hidden></div>' +
         '<div class="actions"><button class="btn primary" type="submit">Save</button></div></form>');
     const form = document.getElementById("bk-form");
+    const paintCost = (est, arrival, departure, guests) => {
+      const box = document.getElementById("bk-cost");
+      if (box) box.outerHTML = this.costBoxHtml(est, arrival, departure, guests);
+      Flights.mountWidget();
+    };
     const refreshExtras = () => {
       const arrival = UI.val(form, "arrival");
       const departure = UI.val(form, "departure");
-      const status = UI.val(form, "status") || b.status || "booked";
       const guests = UI.val(form, "guestCount");
       document.getElementById("bk-hol").innerHTML = this.holidayBannerHtml(arrival, departure);
-      document.getElementById("bk-ack-slot").innerHTML = this.holidayAckHtml(arrival, departure, status);
-      Flights.estimateReturn(arrival, departure, guests).then((est) => {
-        const box = document.getElementById("bk-cost");
-        if (box) box.outerHTML = this.costBoxHtml(est, arrival, departure);
-        Flights.mountWidget();
+      document.getElementById("bk-ack-slot").innerHTML = this.holidayAckHtml(arrival, departure, "booked");
+      paintCost(null, arrival, departure, guests);
+      Flights.withTimeout(Flights.estimateReturn(arrival, departure, guests), 3000).then((est) => {
+        if (document.getElementById("bk-cost")) paintCost(est, arrival, departure, guests);
+      }).catch(() => {
+        if (document.getElementById("bk-cost")) paintCost(null, arrival, departure, guests);
       });
     };
     form.elements.arrival.onchange = refreshExtras;
@@ -554,7 +625,7 @@ const App = {
         guests: UI.val(f, "guests"),
         guestCount: Number(UI.val(f, "guestCount") || 0),
         notes: UI.val(f, "notes"),
-        status: UI.val(f, "status") || "booked",
+        status: "booked",
         createdBy: b.createdBy || Auth.user().id,
         createdAt: b.createdAt || new Date().toISOString()
       };
@@ -947,8 +1018,6 @@ const App = {
     const from = this.travelFrom || "";
     const to = this.travelTo || "";
     const guests = this.travelGuests || 2;
-    const fares = await Flights.getFares({ date, back, from, to, adults: guests });
-    const hl = Flights.highlights(fares);
     const links = Flights.liveLinks(from || "LGW", to || "TLN", date, back, guests);
     const priceBit = (f) => f && f.live && f.price ? "<p class='price'>£" + f.price + "</p>" : "<p class='muted'>Open the airline to see today’s price.</p>";
     const card = (title, cls, f) => f ? '<div class="card hl ' + cls + '"><h3>' + title + "</h3>" + priceBit(f) +
@@ -969,22 +1038,7 @@ const App = {
       this.select("tr-to", [["","All arrivals"],["NCE","Nice"],["MRS","Marseille"],["TLN","Toulon–Hyères"]], to) + "</div>" +
       '<p class="muted">Prefer the airline site?</p>' +
       Flights.buttonsHtml(links) +
-      '<div class="grid highlights">' + card("Live fare", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
-      '<div class="grid cards" style="margin-top:16px">' + fares.map((f) =>
-        '<div class="card route-card"><h3>' + f.from + " → " + f.to + "</h3><p>" + UI.esc(f.fromName) + " to " + UI.esc(f.toName) + "</p>" +
-        '<div class="meta">' + (f.preferred ? '<span class="badge-direct">BA / easyJet</span>' : "") +
-        (f.direct ? '<span class="badge-direct">Direct</span>' : '<span class="chip">Via ' + UI.esc(f.via || "connection") + "</span>") +
-        (f.seasonal ? '<span class="chip">Seasonal</span>' : "") + "</div>" +
-        (f.live && f.price ? "<p class='price'>£" + f.price + "</p>" : "<p class='muted'>Check today’s price on the airline site.</p>") +
-        "<p>" + UI.esc(f.airline) + " · " + UI.mins(f.durationMin) + "</p>" +
-        "<p>Drive to La Croix-Valmer: <b>" + f.drive.label + "</b>" + (f.drive.closest ? " (closest airport)" : "") + (f.drive.summerNote ? " · " + f.drive.summerNote : "") + "</p>" +
-        '<div class="book-links">' +
-        (f.preferred && String(f.airline).indexOf("British") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.baUrl + '">Check live price on British Airways</a>' : "") +
-        (f.preferred && String(f.airline).toLowerCase().indexOf("easyjet") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.easyJetUrl + '">Check live price on easyJet</a>' : "") +
-        '<a class="btn" target="_blank" rel="noopener" href="' + f.googleUrl + '">Google Flights</a>' +
-        '<a class="btn" target="_blank" rel="noopener" href="' + f.skyscannerUrl + '">Skyscanner</a>' +
-        "</div></div>"
-      ).join("") + "</div>";
+      '<div id="tr-fares"><p class="muted">Checking routes…</p></div>';
     const apply = () => {
       this.travelDate = document.getElementById("tr-date").value;
       this.travelBack = document.getElementById("tr-back").value;
@@ -1000,6 +1054,30 @@ const App = {
     document.getElementById("tr-guests").onchange = apply;
     Flights.mountWidget();
     this.afterRender();
+    let fares = [];
+    try {
+      fares = await Flights.withTimeout(Flights.getFares({ date, back, from, to, adults: guests }), 3000);
+    } catch (_) { fares = []; }
+    if (this.view !== "travel") return;
+    const slot = document.getElementById("tr-fares");
+    if (!slot) return;
+    const hl = Flights.highlights(fares);
+    slot.innerHTML = '<div class="grid highlights">' + card("Live fare", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
+      '<div class="grid cards" style="margin-top:16px">' + fares.map((f) =>
+        '<div class="card route-card"><h3>' + f.from + " → " + f.to + "</h3><p>" + UI.esc(f.fromName) + " to " + UI.esc(f.toName) + "</p>" +
+        '<div class="meta">' + (f.preferred ? '<span class="badge-direct">BA / easyJet</span>' : "") +
+        (f.direct ? '<span class="badge-direct">Direct</span>' : '<span class="chip">Via ' + UI.esc(f.via || "connection") + "</span>") +
+        (f.seasonal ? '<span class="chip">Seasonal</span>' : "") + "</div>" +
+        (f.live && f.price ? "<p class='price'>£" + f.price + "</p>" : "<p class='muted'>Check today’s price on the airline site.</p>") +
+        "<p>" + UI.esc(f.airline) + " · " + UI.mins(f.durationMin) + "</p>" +
+        "<p>Drive to La Croix-Valmer: <b>" + f.drive.label + "</b>" + (f.drive.closest ? " (closest airport)" : "") + (f.drive.summerNote ? " · " + f.drive.summerNote : "") + "</p>" +
+        '<div class="book-links">' +
+        (f.preferred && String(f.airline).indexOf("British") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.baUrl + '">Check live price on British Airways</a>' : "") +
+        (f.preferred && String(f.airline).toLowerCase().indexOf("easyjet") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.easyJetUrl + '">Check live price on easyJet</a>' : "") +
+        '<a class="btn" target="_blank" rel="noopener" href="' + f.googleUrl + '">Google Flights</a>' +
+        '<a class="btn" target="_blank" rel="noopener" href="' + f.skyscannerUrl + '">Skyscanner</a>' +
+        "</div></div>"
+      ).join("") + "</div>";
   },
 
   placeKinds() {
@@ -1012,26 +1090,58 @@ const App = {
     return Math.round(revs.reduce((n, r) => n + Number(r.rating), 0) / revs.length);
   },
 
-  renderGuide() {
-    if (this.params.id && (Store.data.places || []).find((p) => p.id === this.params.id)) return this.renderPlace(this.params.id);
+  guidePlaceId() {
+    const raw = (location.hash || "").replace(/^#/, "");
+    const parts = raw.split("/");
+    if (parts[0] === "guide" || parts[0] === "restaurants") return parts[1] ? decodeURIComponent(parts[1]) : "";
+    return this.params.id || "";
+  },
+
+  placeCardHtml(r) {
+    const stars = this.avgRating(r.id) || r.rating || 0;
+    const n = (Store.data.reviews || []).filter((x) => x.placeId === r.id).length;
+    const hay = (r.name + " " + r.town + " " + (r.cuisine || "") + " " + (r.notes || "") + " " + r.kind).toLowerCase();
+    return "<a class='card place-card' href='#guide/" + r.id + "' data-kind='" + UI.esc(r.kind) + "' data-hay='" + UI.esc(hay) + "'><span class='chip'>" + UI.esc(r.kind) +
+      "</span><h3>" + UI.esc(r.name) + "</h3><p class='stars'>" + "★".repeat(stars) + "</p><p>" + UI.esc(r.town) +
+      (r.cuisine ? " · " + UI.esc(r.cuisine) : "") + "</p><p class='muted'>" + UI.esc(r.notes || "") + "</p><p class='muted'>" + n + " reviews</p></a>";
+  },
+
+  filterGuideList() {
     const q = (this.foodQ || "").toLowerCase();
     const kind = this.foodKind || "";
-    let rows = (Store.data.places || []).filter((r) => !q || (r.name + r.town + (r.cuisine || "") + (r.notes || "") + r.kind).toLowerCase().includes(q));
-    if (kind) rows = rows.filter((r) => r.kind === kind);
+    const grid = document.getElementById("guide-list");
+    if (!grid) return;
+    grid.querySelectorAll(".place-card").forEach((card) => {
+      const hay = card.getAttribute("data-hay") || "";
+      const k = card.getAttribute("data-kind") || "";
+      card.hidden = !!(kind && k !== kind) || !!(q && hay.indexOf(q) < 0);
+    });
+  },
+
+  renderGuide() {
+    const id = this.guidePlaceId();
+    if (id && (Store.data.places || []).find((p) => p.id === id)) return this.renderPlace(id);
+    const kind = this.foodKind || "";
+    const rows = Store.data.places || [];
     const view = document.getElementById("view");
     view.innerHTML = this.head("Local guide", "Restaurants, beaches, shops and days out near La Croix-Valmer",
       Auth.canEdit() ? '<button class="btn primary" id="add-r" type="button">Add a place</button>' : "") +
       '<div class="tabs">' + this.placeKinds().map((k) => '<button type="button" class="btn ' + (kind === k[0] ? "primary" : "") + '" data-kind="' + k[0] + '">' + k[1] + "</button>").join("") + "</div>" +
       '<input class="search-box" id="food-q" placeholder="Search places" value="' + UI.esc(this.foodQ || "") + '">' +
-      '<div class="grid cards" style="margin-top:16px">' + rows.map((r) => {
-        const stars = this.avgRating(r.id) || r.rating || 0;
-        const n = (Store.data.reviews || []).filter((x) => x.placeId === r.id).length;
-        return "<a class='card' href='#guide/" + r.id + "' style='text-decoration:none;color:inherit'><span class='chip'>" + UI.esc(r.kind) +
-          "</span><h3>" + UI.esc(r.name) + "</h3><p class='stars'>" + "★".repeat(stars) + "</p><p>" + UI.esc(r.town) +
-          (r.cuisine ? " · " + UI.esc(r.cuisine) : "") + "</p><p class='muted'>" + UI.esc(r.notes || "") + "</p><p class='muted'>" + n + " reviews</p></a>";
-      }).join("") + "</div>";
-    document.getElementById("food-q").oninput = (e) => { this.foodQ = e.target.value; this.renderGuide(); };
-    view.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => { this.foodKind = b.getAttribute("data-kind"); this.renderGuide(); });
+      '<div class="grid cards" id="guide-list" style="margin-top:16px">' + rows.map((r) => this.placeCardHtml(r)).join("") + "</div>";
+    this.filterGuideList();
+    const search = document.getElementById("food-q");
+    if (search) {
+      search.oninput = (e) => {
+        this.foodQ = e.target.value;
+        this.filterGuideList();
+      };
+    }
+    view.querySelectorAll(".tabs [data-kind]").forEach((b) => b.onclick = () => {
+      this.foodKind = b.getAttribute("data-kind");
+      view.querySelectorAll(".tabs [data-kind]").forEach((x) => x.classList.toggle("primary", x === b));
+      this.filterGuideList();
+    });
     const add = document.getElementById("add-r");
     if (add) add.onclick = () => this.placeForm();
     this.afterRender();
@@ -1278,24 +1388,6 @@ const App = {
     this.afterRender();
   },
 
-  renderNews() {
-    const list = Store.data.announcements.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const view = document.getElementById("view");
-    view.innerHTML = this.head("News", "Notes from the house", Auth.isAdmin() ? '<button class="btn primary" id="add-n">Post</button>' : "") +
-      list.map((a) => "<div class='card' style='margin-bottom:12px'><h3>" + UI.esc(a.title) + "</h3><p>" + UI.esc(a.body) + "</p><p class='muted'>" + UI.esc(Store.userName(a.createdBy)) + " · " + UI.fmtTime(a.createdAt) + "</p></div>").join("");
-    const b = document.getElementById("add-n");
-    if (b) b.onclick = () => {
-      UI.modal("Announcement", '<form id="nf"><label class="field"><span>Title</span><input name="title" required></label><label class="field"><span>Message</span><textarea name="body" required></textarea></label><button class="btn primary">Post</button></form>');
-      document.getElementById("nf").onsubmit = (e) => {
-        e.preventDefault();
-        Store.data.announcements.unshift({ id: CryptoUtil.uid("a"), title: UI.val(e.target, "title"), body: UI.val(e.target, "body"), createdBy: Auth.user().id, createdAt: new Date().toISOString() });
-        Store.log("create", "announcement", "", UI.val(e.target, "title"));
-        Store.save(); UI.closeModal(); this.renderNews();
-      };
-    };
-    this.afterRender();
-  },
-
   renderSearch() {
     const q = (this.params.id || "").toLowerCase();
     document.getElementById("global-search").value = this.params.id || "";
@@ -1315,6 +1407,7 @@ const App = {
   },
 
   renderSettings() {
+    Store.syncPending();
     const acts = Store.data.activity.slice(0, 40);
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", "PINs, backup, and activity") +
@@ -1332,8 +1425,8 @@ const App = {
         '<option value="amadeus"' + (Flights.apiProvider() === "amadeus" ? " selected" : "") + ">Amadeus (later)</option>" +
       '</select></label><label class="field"><span>API key</span><input name="key" type="password" autocomplete="off" placeholder="' +
       (Flights.apiKey() ? "Key saved in this browser" : "Optional") + '"></label><button class="btn" type="submit">Save key</button></form></div>' +
-      '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille"></label>' +
-      '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off"></label><button class="btn">Save to GitHub</button></form></div>' +
+      '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille" value="' + UI.esc((Store.ghCreds() || {}).repo || "") + '"></label>' +
+      '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off" placeholder="' + ((Store.ghCreds() || {}).token ? "Token saved in this browser" : "") + '"></label><button class="btn">Save to GitHub</button></form></div>' +
       this.schoolFamilyCard() +
       (Auth.isAdmin() ? this.approvalsCard() + this.pinAdmin() + this.schoolHolidaysCard() : "") +
       '<div class="card" style="margin-top:16px"><h3>Activity</h3>' +
@@ -1350,9 +1443,15 @@ const App = {
     };
     document.getElementById("gh-form").onsubmit = async (e) => {
       e.preventDefault();
-      const parts = UI.val(e.target, "repo").split("/");
+      const repo = UI.val(e.target, "repo");
+      const typed = UI.val(e.target, "token");
+      const token = typed || ((Store.ghCreds() || {}).token || "");
+      const parts = repo.split("/");
+      if (!token || parts.length < 2) return UI.toast("Need owner/repo and a token");
+      Store.setGhCreds(token, repo);
       try {
-        await Store.saveToGitHub(UI.val(e.target, "token"), parts[0], parts[1], "main");
+        await Store.saveToGitHub(token, parts[0], parts[1], "main");
+        Store.syncPending();
         UI.toast("Saved to GitHub");
       } catch (err) { UI.toast(err.message); }
     };
@@ -1446,12 +1545,16 @@ const App = {
   },
 
   approvalsCard() {
-    const pending = Store.data.pendingUsers || [];
-    return '<div class="card" style="margin-top:16px"><h3>Approvals</h3><p class="muted">People who asked for a PIN. Only the house admin can approve.</p>' +
-      (pending.length ? pending.map((p) => "<div class='row'><div><b>" + UI.esc(p.name) + "</b><div class='muted'>Asked " + UI.esc(UI.fmtTime(p.requestedAt)) + "</div></div>" +
+    const pending = Store.syncPending();
+    return '<div class="card" style="margin-top:16px"><h3>Approvals</h3>' +
+      '<p class="muted">People who asked for a PIN on this phone show here at once. If someone signed up on another phone, their request stays on that phone until this file is saved to GitHub — or paste their slip below. You can also Add person with a 4-digit PIN.</p>' +
+      (pending.length ? pending.map((p) => "<div class='row'><div><b>" + UI.esc(p.name) + "</b><div class='muted'>Asked " + UI.esc(UI.fmtTime(p.requestedAt)) +
+        (p.id ? " · " + UI.esc(String(p.firstName || p.name || "").replace(/\s+/g, "").toUpperCase() + "-" + String(p.id).slice(-2).toUpperCase()) : "") +
+        "</div></div>" +
         "<span class='actions'><button class='btn primary' type='button' data-approve='" + p.id + "'>Approve</button><button class='btn' type='button' data-decline='" + p.id + "'>Decline</button></span></div>").join("") :
-        "<p class='muted'>No one is waiting.</p>") +
-      "</div>";
+        "<p class='muted'>No one is waiting on this phone.</p>") +
+      '<form id="slip-form" style="margin-top:12px"><label class="field"><span>Add a request from a phone</span><textarea name="slip" rows="3" placeholder="Paste the request slip"></textarea></label>' +
+      '<button class="btn" type="submit">Add request</button></form></div>';
   },
 
   pinAdmin() {
@@ -1462,7 +1565,7 @@ const App = {
         this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
         (u.id !== Auth.user().id ? "<button class='text-btn' data-delu='" + u.id + "'>Remove</button>" : "") + "</div>").join("") +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
-      '<label class="field"><span>New 4–6 digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required></label><button class="btn">Add person</button></form></div>';
+      '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn">Add person</button></form></div>';
   },
 
   bindPinAdmin() {
@@ -1470,8 +1573,8 @@ const App = {
     const f = document.getElementById("pin-form");
     if (f) f.onsubmit = async (e) => {
       e.preventDefault();
-      const pin = UI.val(f, "pin");
-      if (!/^\d{4,6}$/.test(pin)) return UI.toast("PIN must be 4–6 digits");
+      const pin = UI.val(f, "pin").replace(/\D/g, "");
+      if (!/^\d{4}$/.test(pin)) return UI.toast("PIN must be 4 digits");
       const salt = CryptoUtil.randomSalt();
       const person = { id: CryptoUtil.uid("u"), name: UI.val(f, "name"), role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id };
       Store.data.users.push(person);
@@ -1491,11 +1594,20 @@ const App = {
     });
     document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => this.approvePending(b.getAttribute("data-approve")));
     document.querySelectorAll("[data-decline]").forEach((b) => b.onclick = () => this.declinePending(b.getAttribute("data-decline")));
+    const slipForm = document.getElementById("slip-form");
+    if (slipForm) slipForm.onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const person = Store.importPendingSlip(UI.val(slipForm, "slip"));
+        UI.toast((person.name || "Request") + " added to Approvals");
+        this.renderSettings();
+      } catch (err) { UI.toast(err.message || "Could not add that request"); }
+    };
   },
 
   approvePending(id) {
     if (!Auth.isAdmin()) return;
-    const pending = (Store.data.pendingUsers || []).find((p) => p.id === id);
+    const pending = Store.syncPending().find((p) => p.id === id);
     if (!pending) return;
     const admin = Auth.user();
     const now = new Date().toISOString();
@@ -1514,7 +1626,7 @@ const App = {
     };
     Store.data.users.push(person);
     Store.addOwner(person);
-    Store.data.pendingUsers = Store.data.pendingUsers.filter((p) => p.id !== id);
+    Store.removePending(id);
     Store.log("approve", "user", "", admin.name + " approved " + pending.name);
     Store.save();
     UI.toast(pending.name + " can now sign in");
@@ -1523,8 +1635,8 @@ const App = {
 
   declinePending(id) {
     if (!Auth.isAdmin()) return;
-    const pending = (Store.data.pendingUsers || []).find((p) => p.id === id);
-    Store.data.pendingUsers = (Store.data.pendingUsers || []).filter((p) => p.id !== id);
+    const pending = Store.syncPending().find((p) => p.id === id);
+    Store.removePending(id);
     Store.log("decline", "user", "", (pending && pending.name) || id);
     Store.save();
     UI.toast("Request declined");
