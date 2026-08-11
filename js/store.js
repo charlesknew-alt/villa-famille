@@ -285,6 +285,9 @@ const Store = {
     if (remote || keptUsers.length || (this.data.users || []).length > 1) {
       this.pushRemote().catch(() => {});
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'C',location:'store.js:load',message:'store load done',data:{keptUserCount:keptUsers.length,remoteOk:!!remote,remoteUserCount:(this._remoteUsers||[]).length,localUserCount:(this.data.users||[]).length,localBookingCount:(this.data.bookings||[]).length,willPush:!!(remote||keptUsers.length||(this.data.users||[]).length>1)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return this.data;
   },
 
@@ -297,13 +300,21 @@ const Store = {
       if (user.pinSalt && user.pinHash) {
         try {
           const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
-          if (hash === user.pinHash) return user;
+          if (hash === user.pinHash) {
+            // #region agent log
+            fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'F',location:'store.js:findUserByPin',message:'pin lookup',data:{userCount:users.length,pinLen:clean.length,found:true,via:'hash',role:user.role||''},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            return user;
+          }
         } catch (_) { /* bad salt */ }
       }
     }
     for (let j = 0; j < users.length; j++) {
       if (users[j].pinDisplay === clean) return users[j];
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'F',location:'store.js:findUserByPin',message:'pin lookup',data:{userCount:users.length,pinLen:clean.length,found:false,roles:(users||[]).map(function(u){return u.role||'';})},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return null;
   },
 
@@ -350,6 +361,9 @@ const Store = {
         settings: Object.assign({}, remote && remote.settings, local.settings)
       };
       const ok = await FamilySync.push(merged);
+      // #region agent log
+      fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'C',location:'store.js:pushRemote',message:'pushRemote finished',data:{ok:ok,localUserCount:(local.users||[]).length,localBookingCount:(local.bookings||[]).length,mergedUserCount:(merged.users||[]).length,mergedBookingCount:(merged.bookings||[]).length,remoteUserCount:(remote&&remote.users||[]).length,remoteBookingCount:(remote&&remote.bookings||[]).length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (ok) {
         this._remoteUsers = merged.users;
         this.data.users = this.mergeUsers(this.data.users, merged.users);
