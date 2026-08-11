@@ -37,6 +37,33 @@
     }
   ],
   "pendingUsers": [],
+  "schools": [
+    { "id": "seaford", "name": "Seaford College, Sussex", "short": "Seaford" },
+    { "id": "keswoking", "name": "King Edward's School, Woking", "short": "KE Woking" },
+    { "id": "greenfield", "name": "Greenfield School, Woking", "short": "Greenfield" },
+    { "id": "other", "name": "Other school", "short": "Other" }
+  ],
+  "schoolHolidayNote": "Typical term dates for West Sussex / Surrey independents — admin can edit.",
+  "schoolHolidays": [
+    { "id": "sh-2025-feb", "label": "February half term 2025", "kind": "halfTerm", "start": "2025-02-15", "end": "2025-02-23" },
+    { "id": "sh-2025-easter", "label": "Easter 2025", "kind": "easter", "start": "2025-04-04", "end": "2025-04-22" },
+    { "id": "sh-2025-may", "label": "May half term 2025", "kind": "halfTerm", "start": "2025-05-24", "end": "2025-06-01" },
+    { "id": "sh-2025-summer", "label": "Summer 2025", "kind": "summer", "start": "2025-07-05", "end": "2025-09-02" },
+    { "id": "sh-2025-oct", "label": "October half term 2025", "kind": "halfTerm", "start": "2025-10-18", "end": "2025-10-26" },
+    { "id": "sh-2025-xmas", "label": "Christmas 2025", "kind": "christmas", "start": "2025-12-13", "end": "2026-01-06" },
+    { "id": "sh-2026-feb", "label": "February half term 2026", "kind": "halfTerm", "start": "2026-02-14", "end": "2026-02-22" },
+    { "id": "sh-2026-easter", "label": "Easter 2026", "kind": "easter", "start": "2026-03-28", "end": "2026-04-19" },
+    { "id": "sh-2026-may", "label": "May half term 2026", "kind": "halfTerm", "start": "2026-05-23", "end": "2026-05-31" },
+    { "id": "sh-2026-summer", "label": "Summer 2026", "kind": "summer", "start": "2026-07-04", "end": "2026-09-01" },
+    { "id": "sh-2026-oct", "label": "October half term 2026", "kind": "halfTerm", "start": "2026-10-17", "end": "2026-10-25" },
+    { "id": "sh-2026-xmas", "label": "Christmas 2026", "kind": "christmas", "start": "2026-12-12", "end": "2027-01-05" },
+    { "id": "sh-2027-feb", "label": "February half term 2027", "kind": "halfTerm", "start": "2027-02-13", "end": "2027-02-21" },
+    { "id": "sh-2027-easter", "label": "Easter 2027", "kind": "easter", "start": "2027-03-26", "end": "2027-04-18" },
+    { "id": "sh-2027-may", "label": "May half term 2027", "kind": "halfTerm", "start": "2027-05-29", "end": "2027-06-06" },
+    { "id": "sh-2027-summer", "label": "Summer 2027", "kind": "summer", "start": "2027-07-03", "end": "2027-09-01" },
+    { "id": "sh-2027-oct", "label": "October half term 2027", "kind": "halfTerm", "start": "2027-10-16", "end": "2027-10-24" },
+    { "id": "sh-2027-xmas", "label": "Christmas 2027", "kind": "christmas", "start": "2027-12-11", "end": "2028-01-04" }
+  ],
   "owners": [
     { "id": "u-admin", "name": "House Admin" },
     { "id": "u-claire", "name": "Claire" },

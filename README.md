@@ -39,10 +39,11 @@ PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never s
 
 ## What is in the app
 
-- **Calendar** — the main feature. Green = free, blue = booked, red = blocked. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house.
+- **Calendar** — the main feature. Green = free, blue = booked, red = blocked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house. Booking form shows a rough BA/easyJet travel cost.
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
 - **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
-- **Travel** — London (LHR / LGW / STN / LCY) to Nice, Marseille, Toulon. Sample prices, directs, drive times to La Croix-Valmer, links to Google Flights and Skyscanner.
+- **Travel** — London (LHR / LGW / STN / LCY) to Nice, Marseille, Toulon. **Guide prices** (not live) preferring British Airways and easyJet. Big buttons open BA, easyJet, Google Flights and Skyscanner with your dates. Drive times to La Croix-Valmer.
+- **School holidays** — Seaford College, King Edward’s Woking and Greenfield Woking families have priority in typical 2025–2027 independent-school holidays. Admin can edit the dates in Settings.
 - **Local guide** — restaurants, beaches, attractions, shops. Stars, comments, photos, replies.
 - **Expenses** — GBP, who paid, receipts, personal vs shared. Shared bills split equally across four owners. Settle up when reimbursed.
 - News, ideas, search, dark mode, activity log.

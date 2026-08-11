@@ -320,11 +320,58 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
 .cal-day.blocked { background: #f5d0c8; }
 .cal-day.out { opacity: 0.38; }
 .cal-day.today { outline: 2px solid var(--olive); }
+.cal-day.holiday { box-shadow: inset 0 -5px 0 #d4b45a; }
+.cal-flag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #5c4310;
+  background: #efe1bf;
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+.holiday-banner {
+  background: #efe1bf;
+  color: #5c4310;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.holiday-banner.soft { font-weight: 600; }
+[data-theme="dark"] .holiday-banner { background: #3a3220; color: #f0d9a0; }
+.cost-box {
+  background: var(--olive-soft);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+.cost-box p { margin: 0 0 8px; }
+.cost-box p:last-child { margin: 0; }
+.guide-price {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.live-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.live-links a { min-height: 56px; font-size: 16px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 14px; font-size: 14px; font-weight: 600; }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: -2px; }
 .swatch.available { background: #7bb56b; }
 .swatch.booked { background: #4d8fd6; }
 .swatch.blocked { background: #d15a48; }
+.swatch.holiday { background: #d4b45a; }
 .flow { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .flow span {
   padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
@@ -438,4 +485,5 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
   .view { padding: 18px 14px 90px; }
   .cal-day { min-height: 64px; }
   .highlights { grid-template-columns: 1fr; }
+  .live-links { grid-template-columns: 1fr; }
 }

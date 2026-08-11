@@ -11,7 +11,8 @@ const Store = {
       users: [], pendingUsers: [], owners: [], bookings: [], documents: [], restaurants: [], places: [], reviews: [], contacts: [],
       maintenance: [], comments: [], recurring: [], expenses: [], inventory: [],
       checklistItems: [], checklistRecords: [], mapSpots: [], systems: {},
-      ideas: [], announcements: [], activity: [], settings: {}
+      ideas: [], announcements: [], activity: [], settings: {},
+      schools: [], schoolHolidays: [], schoolHolidayNote: ""
     };
   },
 
@@ -70,6 +71,17 @@ const Store = {
     d.pendingUsers = d.pendingUsers || [];
     d.places = d.places || [];
     d.owners = d.owners || [];
+    d.schools = d.schools || [];
+    d.schoolHolidays = d.schoolHolidays || [];
+    d.schoolHolidayNote = d.schoolHolidayNote || "Typical term dates for West Sussex / Surrey independents — admin can edit.";
+    if (!d.schools.length) {
+      d.schools = [
+        { id: "seaford", name: "Seaford College, Sussex", short: "Seaford" },
+        { id: "keswoking", name: "King Edward's School, Woking", short: "KE Woking" },
+        { id: "greenfield", name: "Greenfield School, Woking", short: "Greenfield" },
+        { id: "other", name: "Other school", short: "Other" }
+      ];
+    }
     d.reviews = d.reviews || [];
     if (!d.places.length && (d.restaurants || []).length) {
       d.places = d.restaurants.map((r) => Object.assign({ kind: "restaurant" }, r));
@@ -156,6 +168,40 @@ const Store = {
 
   bookingConflict(candidate) {
     return (this.data.bookings || []).find((b) => this.overlaps(candidate, b));
+  },
+
+  prioritySchoolIds() {
+    return ["seaford", "keswoking", "greenfield"];
+  },
+
+  schools() {
+    return this.data.schools || [];
+  },
+
+  schoolById(id) {
+    return this.schools().find((s) => s.id === id) || null;
+  },
+
+  isSchoolPriority(user) {
+    if (!user || !user.hasSchoolChildren || !user.schoolId) return false;
+    return this.prioritySchoolIds().indexOf(user.schoolId) >= 0;
+  },
+
+  prioritySchoolNames() {
+    return this.schools()
+      .filter((s) => this.prioritySchoolIds().indexOf(s.id) >= 0)
+      .map((s) => s.short)
+      .join(" / ");
+  },
+
+  holidayOn(iso) {
+    if (!iso) return null;
+    return (this.data.schoolHolidays || []).find((h) => h.start <= iso && iso <= h.end) || null;
+  },
+
+  holidaysOverlapping(arrival, departure) {
+    if (!arrival || !departure) return [];
+    return (this.data.schoolHolidays || []).filter((h) => arrival <= h.end && departure > h.start);
   },
 
   dayStatus(iso) {

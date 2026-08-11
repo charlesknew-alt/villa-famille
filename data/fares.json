@@ -2,7 +2,7 @@
   "version": 1,
   "currency": "GBP",
   "asOf": "2026-08-11",
-  "note": "Sample fares for family planning. Tap Google Flights or Skyscanner for live prices. Swap getFares() later for a real API.",
+  "note": "Guide prices for family planning (not live). Prefer British Airways and easyJet. Tap those sites for live fares. Swap getFares() later if you add an API key.",
   "airports": {
     "LHR": { "name": "London Heathrow", "city": "London" },
     "LGW": { "name": "London Gatwick", "city": "London" },

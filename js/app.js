@@ -229,6 +229,7 @@ const App = {
     const view = document.getElementById("view");
     view.innerHTML = this.head("Welcome home", d.house.place + " · " + (d.house.region || ""),
       '<a class="btn primary" href="#calendar">New stay</a><a class="btn" href="#maintenance">Report issue</a>') +
+      this.holidayDashNote() +
       '<div class="grid stats">' +
         this.stat(here.length ? here[0].guests.split(",")[0] : "Empty", "Who is here") +
         this.stat(next.length, "Upcoming stays") +
@@ -277,6 +278,55 @@ const App = {
     });
   },
 
+  holidayDashNote() {
+    const t = UI.today();
+    const now = Store.holidayOn(t);
+    const soon = (Store.data.schoolHolidays || []).filter((h) => h.start > t).sort((a, b) => a.start.localeCompare(b.start))[0];
+    if (!now && !soon) return "";
+    const names = Store.prioritySchoolNames();
+    if (now) {
+      return '<div class="holiday-banner">School holiday now (' + UI.esc(now.label) + '). ' +
+        UI.esc(names) + " families have priority.</div>";
+    }
+    return '<div class="holiday-banner soft">Next school holiday: <b>' + UI.esc(soon.label) + "</b> · " +
+      UI.fmt(soon.start) + " – " + UI.fmt(soon.end) + ". " + UI.esc(names) + " families have priority.</div>";
+  },
+
+  holidayBannerHtml(arrival, departure) {
+    const hits = Store.holidaysOverlapping(arrival, departure);
+    if (!hits.length) return "";
+    return '<div class="holiday-banner">School holiday — ' + UI.esc(Store.prioritySchoolNames()) +
+      " families have priority." +
+      '<div class="muted" style="font-weight:500;margin-top:6px">' +
+      hits.map((h) => UI.esc(h.label) + " · " + UI.fmt(h.start) + " – " + UI.fmt(h.end)).join("<br>") +
+      "</div></div>";
+  },
+
+  needsHolidayAck(arrival, departure, status) {
+    if (status === "blocked") return false;
+    if (!Store.holidaysOverlapping(arrival, departure).length) return false;
+    if (Auth.isAdmin()) return false;
+    if (Store.isSchoolPriority(Auth.user())) return false;
+    return true;
+  },
+
+  holidayAckHtml(arrival, departure, status) {
+    if (!this.needsHolidayAck(arrival, departure, status)) return "";
+    return '<label class="check-item" id="bk-ack-wrap"><input type="checkbox" name="holidayAck" id="bk-ack">' +
+      "<span>These dates are a school holiday. I have picked other dates if I can, or I understand a school family / the house admin may need to confirm.</span></label>";
+  },
+
+  costBoxHtml(est) {
+    if (!est) return '<div class="cost-box" id="bk-cost"><p class="guide-price">Rough travel cost</p><p class="muted">No guide fares for those dates.</p></div>';
+    return '<div class="cost-box" id="bk-cost"><p class="guide-price">Rough travel cost</p>' +
+      "<p>About <b>£" + est.lowPp + "–£" + est.highPp + "</b> return pp · about <b>£" + est.lowTotal +
+      (est.highTotal !== est.lowTotal ? "–£" + est.highTotal : "") + "</b> for " + est.guests +
+      " guest" + (est.guests === 1 ? "" : "s") +
+      " (guide price, BA/easyJet — tap Travel to check live).</p>" +
+      '<p class="muted">Nearest convenient airport in the guide is often ' + UI.esc(est.airport) + ".</p>" +
+      '<p><a href="#travel">Open Travel</a></p></div>';
+  },
+
   stat(n, label) {
     return '<div class="card stat"><b>' + UI.esc(n) + "</b><span>" + UI.esc(label) + "</span></div>";
   },
@@ -319,9 +369,10 @@ const App = {
     if (!this.cal.cursor) this.cal.cursor = UI.today().slice(0, 7) + "-01";
     const mode = this.cal.mode;
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Calendar", "Green free · Blue booked · Red blocked",
+    view.innerHTML = this.head("Calendar", "Green free · Blue booked · Red blocked · Gold flag = school holiday",
       (Auth.canEdit() ? '<button class="btn primary" id="add-stay" type="button">Add stay</button><button class="btn" id="add-block" type="button">Block dates</button>' : "")) +
-      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch blocked"></i>Blocked</span></div>' +
+      this.holidayDashNote() +
+      '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch blocked"></i>Blocked</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
       '<div class="filters"><div class="seg">' +
         ["month","week","list"].map((m) => '<button type="button" data-mode="' + m + '" class="' + (mode === m ? "on" : "") + '">' + m[0].toUpperCase() + m.slice(1) + "</button>").join("") +
       '</div><div class="actions"><button class="btn ghost" id="cal-prev" type="button">Back</button><button class="btn ghost" id="cal-today" type="button">Today</button><button class="btn ghost" id="cal-next" type="button">Next</button></div></div>' +
@@ -375,8 +426,10 @@ const App = {
     for (let day = 1; day <= days; day++) {
       const iso = start.toISOString().slice(0, 8) + String(day).padStart(2, "0");
       const st = Store.dayStatus(iso);
+      const hol = Store.holidayOn(iso);
       const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
-      html += '<div class="cal-day ' + st + (iso === UI.today() ? " today" : "") + '" data-day="' + iso + '"><b>' + day + "</b>" +
+      html += '<div class="cal-day ' + st + (hol ? " holiday" : "") + (iso === UI.today() ? " today" : "") + '" data-day="' + iso + '"><b>' + day +
+        (hol ? ' <span class="cal-flag" title="' + UI.esc(hol.label) + '">H</span>' : "") + "</b>" +
         stays.map((b) => '<a class="cal-pill" data-open="' + b.id + '">' + UI.esc((b.guests || b.notes || b.status).slice(0, 22)) + "</a>").join("") +
         "</div>";
     }
@@ -391,8 +444,10 @@ const App = {
     for (let i = 0; i < 7; i++) {
       const iso = d.toISOString().slice(0, 10);
       const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
-      html += '<div class="cal-day week-col ' + Store.dayStatus(iso) + '" data-day="' + iso + '"><b>' +
-        d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + "</b>" +
+      const hol = Store.holidayOn(iso);
+      html += '<div class="cal-day week-col ' + Store.dayStatus(iso) + (hol ? " holiday" : "") + '" data-day="' + iso + '"><b>' +
+        d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+        (hol ? ' <span class="cal-flag">H</span>' : "") + "</b>" +
         stays.map((b) => "<div class='cal-pill' data-open='" + b.id + "'>" + UI.esc(b.guests || b.notes || b.status) + "</div>").join("") +
         "</div>";
       d.setDate(d.getDate() + 1);
@@ -406,7 +461,9 @@ const App = {
     const past = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.departure < t).sort((a, b) => b.arrival.localeCompare(a.arrival));
     const block = (title, rows) => "<div class='card' style='margin-bottom:12px'><h3>" + title + "</h3>" +
       (rows.length ? rows.map((b) => "<div class='row'><div><b>" + UI.esc(b.guests || b.notes || "Stay") + "</b><div class='muted'>" +
-        UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests · " + b.status + "</div></div><button class='btn' data-open='" + b.id + "'>Open</button></div>").join("") : "<p class='empty'>None</p>") + "</div>";
+        UI.fmt(b.arrival) + " – " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests · " + b.status +
+        (Store.holidaysOverlapping(b.arrival, b.departure).length ? " · school holiday" : "") +
+        "</div></div><button class='btn' data-open='" + b.id + "'>Open</button></div>").join("") : "<p class='empty'>None</p>") + "</div>";
     return block("Coming up", future) + block("Past", past);
   },
 
@@ -422,6 +479,7 @@ const App = {
     if (!b) return;
     const rec = (Store.data.checklistRecords || []).find((r) => r.bookingId === b.id);
     UI.modal((b.status === "blocked" ? "Blocked" : "Stay") + " · " + UI.fmt(b.arrival),
+      this.holidayBannerHtml(b.arrival, b.departure) +
       "<p><b>" + UI.esc(b.guests || "—") + "</b></p><p>" + UI.fmt(b.arrival) + " → " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests</p>" +
       "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + b.status + "</p>" +
       (rec ? "<p>Departure checklist completed " + UI.fmtTime(rec.completedAt) + ".</p>" : "<p><a href='#house'>Open departure checklist</a></p>"),
@@ -451,13 +509,33 @@ const App = {
       '<form id="bk-form">' +
         '<div class="field-row"><label class="field"><span>Arrival</span><input name="arrival" type="date" value="' + UI.esc(b.arrival || "") + '" required></label>' +
         '<label class="field"><span>Departure</span><input name="departure" type="date" value="' + UI.esc(b.departure || "") + '" required></label></div>' +
+        '<div id="bk-hol">' + this.holidayBannerHtml(b.arrival, b.departure) + "</div>" +
+        '<div id="bk-cost" class="cost-box"><p class="guide-price">Rough travel cost</p><p class="muted">Checking guide prices…</p></div>' +
         '<label class="field"><span>Who is staying</span><input name="guests" value="' + UI.esc(b.guests || "") + '" placeholder="Names"></label>' +
         '<label class="field"><span>Guest count</span><input name="guestCount" type="number" min="0" value="' + (b.guestCount || 0) + '"></label>' +
         '<label class="field"><span>Notes</span><textarea name="notes" rows="3">' + UI.esc(b.notes || "") + "</textarea></label>" +
         (Auth.isAdmin() ? '<label class="field"><span>Type</span><select name="status"><option value="booked"' + (b.status !== "blocked" ? " selected" : "") + ">Booked</option><option value='blocked'" + (b.status === "blocked" ? " selected" : "") + ">Blocked / unavailable</option></select></label>" : '<input type="hidden" name="status" value="' + UI.esc(b.status || "booked") + '">') +
+        '<div id="bk-ack-slot">' + this.holidayAckHtml(b.arrival, b.departure, b.status) + "</div>" +
         '<div id="bk-warn" class="pin-error" hidden></div>' +
         '<div class="actions"><button class="btn primary" type="submit">Save</button></div></form>');
-    document.getElementById("bk-form").onsubmit = (e) => {
+    const form = document.getElementById("bk-form");
+    const refreshExtras = () => {
+      const arrival = UI.val(form, "arrival");
+      const departure = UI.val(form, "departure");
+      const status = UI.val(form, "status") || b.status || "booked";
+      const guests = UI.val(form, "guestCount");
+      document.getElementById("bk-hol").innerHTML = this.holidayBannerHtml(arrival, departure);
+      document.getElementById("bk-ack-slot").innerHTML = this.holidayAckHtml(arrival, departure, status);
+      Flights.estimateReturn(arrival, departure, guests).then((est) => {
+        const box = document.getElementById("bk-cost");
+        if (box) box.outerHTML = this.costBoxHtml(est);
+      });
+    };
+    form.elements.arrival.onchange = refreshExtras;
+    form.elements.departure.onchange = refreshExtras;
+    form.elements.guestCount.onchange = refreshExtras;
+    refreshExtras();
+    form.onsubmit = (e) => {
       e.preventDefault();
       const f = e.target;
       const next = {
@@ -475,6 +553,17 @@ const App = {
         document.getElementById("bk-warn").hidden = false;
         document.getElementById("bk-warn").textContent = "Departure must be after arrival.";
         return;
+      }
+      if (this.needsHolidayAck(next.arrival, next.departure, next.status)) {
+        const ack = document.getElementById("bk-ack");
+        if (!ack || !ack.checked) {
+          document.getElementById("bk-warn").hidden = false;
+          document.getElementById("bk-warn").textContent = "School holiday — pick other dates, or tick the box if the house admin is happy for you to continue.";
+          return;
+        }
+        next.holidayAck = true;
+        next.holidayAckAt = new Date().toISOString();
+        next.holidayAckBy = Auth.user().id;
       }
       const clash = Store.bookingConflict(next);
       if (clash) {
@@ -843,39 +932,54 @@ const App = {
 
   async renderTravel() {
     const date = this.travelDate || UI.addDays(UI.today(), 14);
+    const back = this.travelBack || UI.addDays(date, 7);
     this.travelDate = date;
+    this.travelBack = back;
     const from = this.travelFrom || "";
     const to = this.travelTo || "";
-    const fares = await Flights.getFares({ date, from, to });
+    const fares = await Flights.getFares({ date, back, from, to });
     const hl = Flights.highlights(fares);
-    const card = (title, cls, f) => f ? '<div class="card hl ' + cls + '"><h3>' + title + "</h3><p class='price'>£" + f.price + '</p><p><b>' + f.from + " → " + f.to + "</b> · " + UI.esc(f.airline) +
+    const links = Flights.liveLinks(from || "LGW", to || "TLN", date, back);
+    const card = (title, cls, f) => f ? '<div class="card hl ' + cls + '"><h3>' + title + "</h3><p class='guide-price'>Guide price</p><p class='price'>£" + f.price + '</p><p><b>' + f.from + " → " + f.to + "</b> · " + UI.esc(f.airline) +
       (f.direct ? ' <span class="badge-direct">Direct</span>' : "") + "</p><p class='muted'>Flight " + UI.mins(f.durationMin) + " · Drive " + f.drive.label + "</p></div>" : "";
     const view = document.getElementById("view");
     view.innerHTML = this.head("Travel", "London to the house near La Croix-Valmer", "") +
-      '<p class="note-sample">Sample fares from the repo file <code>data/fares.json</code>. Tap a booking link for live prices.</p>' +
-      '<div class="filters"><label class="field"><span>When</span><input id="tr-date" type="date" value="' + date + '"></label>' +
+      '<p class="note-sample">These are <b>guide prices</b> (last-known samples for BA and easyJet). They are not live. There is no airline API in this app — tap the big buttons to check today’s fares.</p>' +
+      '<div class="live-links">' +
+        '<a class="btn primary" target="_blank" rel="noopener" href="' + links.ba + '">Check live on British Airways</a>' +
+        '<a class="btn primary" target="_blank" rel="noopener" href="' + links.easyJet + '">Check live on easyJet</a>' +
+        '<a class="btn" target="_blank" rel="noopener" href="' + links.google + '">Google Flights</a>' +
+        '<a class="btn" target="_blank" rel="noopener" href="' + links.skyscanner + '">Skyscanner</a>' +
+      "</div>" +
+      '<div class="filters"><label class="field"><span>Outbound</span><input id="tr-date" type="date" value="' + date + '"></label>' +
+      '<label class="field"><span>Return</span><input id="tr-back" type="date" value="' + back + '"></label>' +
       this.select("tr-from", [["","All London airports"],["LHR","Heathrow"],["LGW","Gatwick"],["STN","Stansted"],["LCY","London City"]], from) +
       this.select("tr-to", [["","All arrivals"],["NCE","Nice"],["MRS","Marseille"],["TLN","Toulon–Hyères"]], to) + "</div>" +
-      '<div class="grid highlights">' + card("Cheapest", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
+      '<div class="grid highlights">' + card("Cheapest BA / easyJet", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
       '<div class="grid cards" style="margin-top:16px">' + fares.map((f) =>
         '<div class="card route-card"><h3>' + f.from + " → " + f.to + "</h3><p>" + UI.esc(f.fromName) + " to " + UI.esc(f.toName) + "</p>" +
-        '<div class="meta">' + (f.direct ? '<span class="badge-direct">Direct</span>' : '<span class="chip">Via ' + UI.esc(f.via || "connection") + "</span>") +
+        '<div class="meta">' + (f.preferred ? '<span class="badge-direct">BA / easyJet</span>' : "") +
+        (f.direct ? '<span class="badge-direct">Direct</span>' : '<span class="chip">Via ' + UI.esc(f.via || "connection") + "</span>") +
         (f.seasonal ? '<span class="chip">Seasonal</span>' : "") + "</div>" +
-        "<p class='price'>£" + f.price + " <span class='note-sample'>sample</span></p>" +
+        "<p class='price'>£" + f.price + " <span class='note-sample'>guide price</span></p>" +
         "<p>" + UI.esc(f.airline) + " · " + UI.mins(f.durationMin) + "</p>" +
         "<p>Drive to La Croix-Valmer: <b>" + f.drive.label + "</b>" + (f.drive.closest ? " (closest airport)" : "") + (f.drive.summerNote ? " · " + f.drive.summerNote : "") + "</p>" +
-        '<div class="book-links"><a class="btn primary" target="_blank" rel="noopener" href="' + f.googleUrl + '">Google Flights</a>' +
+        '<div class="book-links">' +
+        (f.preferred && String(f.airline).indexOf("British") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.baUrl + '">Check live on British Airways</a>' : "") +
+        (f.preferred && String(f.airline).toLowerCase().indexOf("easyjet") >= 0 ? '<a class="btn primary" target="_blank" rel="noopener" href="' + f.easyJetUrl + '">Check live on easyJet</a>' : "") +
+        '<a class="btn" target="_blank" rel="noopener" href="' + f.googleUrl + '">Google Flights</a>' +
         '<a class="btn" target="_blank" rel="noopener" href="' + f.skyscannerUrl + '">Skyscanner</a>' +
-        (f.airlineUrl ? '<a class="btn" target="_blank" rel="noopener" href="' + f.airlineUrl + '">' + UI.esc(f.airline.split(" ")[0]) + "</a>" : "") +
         "</div></div>"
       ).join("") + "</div>";
     const apply = () => {
       this.travelDate = document.getElementById("tr-date").value;
+      this.travelBack = document.getElementById("tr-back").value;
       this.travelFrom = document.getElementById("tr-from").value;
       this.travelTo = document.getElementById("tr-to").value;
       this.renderTravel();
     };
     document.getElementById("tr-date").onchange = apply;
+    document.getElementById("tr-back").onchange = apply;
     document.getElementById("tr-from").onchange = apply;
     document.getElementById("tr-to").onchange = apply;
     this.afterRender();
@@ -1203,7 +1307,8 @@ const App = {
       '<div class="actions"><button class="btn primary" id="dl-json">Download house.json</button><button class="btn" id="dl-csv">Download CSVs</button><label class="btn">Restore JSON<input type="file" id="up-json" accept="application/json" hidden></label></div></div>' +
       '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille"></label>' +
       '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off"></label><button class="btn">Save to GitHub</button></form></div>' +
-      (Auth.isAdmin() ? this.approvalsCard() + this.pinAdmin() : "") +
+      this.schoolFamilyCard() +
+      (Auth.isAdmin() ? this.approvalsCard() + this.pinAdmin() + this.schoolHolidaysCard() : "") +
       '<div class="card" style="margin-top:16px"><h3>Activity</h3>' +
       acts.map((a) => "<div class='row'><div><b>" + UI.esc(a.action) + "</b> " + UI.esc(a.entity) + "<div class='muted'>" + UI.esc(a.detail) + " · " + UI.esc(Store.userName(a.userId)) + "</div></div><span class='muted'>" + UI.fmtTime(a.at) + "</span></div>").join("") +
       "</div>";
@@ -1225,7 +1330,83 @@ const App = {
       } catch (err) { UI.toast(err.message); }
     };
     this.bindPinAdmin();
+    this.bindSchoolSettings();
     this.afterRender();
+  },
+
+  schoolOptions(selected) {
+    return '<option value="">No school children</option>' +
+      Store.schools().map((s) => "<option value='" + s.id + "'" + (selected === s.id ? " selected" : "") + ">" +
+        UI.esc(s.name) + "</option>").join("");
+  },
+
+  schoolFamilyCard() {
+    const u = Auth.user();
+    if (!u || u.role === "guest") return "";
+    return '<div class="card" style="margin-top:16px"><h3>School children</h3>' +
+      "<p class='muted'>Families at Seaford College, King Edward’s Woking, or Greenfield Woking have priority in school holidays.</p>" +
+      '<label class="field"><span>Your family</span><select id="my-school">' + this.schoolOptions(u.schoolId || "") + "</select></label></div>";
+  },
+
+  schoolHolidaysCard() {
+    const note = Store.data.schoolHolidayNote || "Typical term dates — admin can edit.";
+    const rows = (Store.data.schoolHolidays || []).slice().sort((a, b) => a.start.localeCompare(b.start));
+    return '<div class="card" style="margin-top:16px"><h3>School holidays</h3>' +
+      "<p class='muted'>" + UI.esc(note) + "</p>" +
+      "<p>Priority schools: <b>Seaford</b> · <b>KE Woking</b> · <b>Greenfield Woking</b></p>" +
+      (rows.length ? rows.map((h) => "<div class='row'><div><b>" + UI.esc(h.label) + "</b><div class='muted'>" +
+        UI.fmt(h.start) + " – " + UI.fmt(h.end) + "</div></div><button class='text-btn' type='button' data-delh='" + h.id + "'>Remove</button></div>").join("") : "<p class='muted'>None listed.</p>") +
+      '<form id="hol-form"><div class="field-row"><label class="field"><span>Label</span><input name="label" placeholder="May half term 2028" required></label>' +
+      '<label class="field"><span>Kind</span><select name="kind"><option value="halfTerm">Half term</option><option value="easter">Easter</option><option value="summer">Summer</option><option value="christmas">Christmas</option></select></label></div>' +
+      '<div class="field-row"><label class="field"><span>From</span><input name="start" type="date" required></label>' +
+      '<label class="field"><span>To</span><input name="end" type="date" required></label></div>' +
+      '<button class="btn" type="submit">Add holiday dates</button></form></div>';
+  },
+
+  bindSchoolSettings() {
+    const mine = document.getElementById("my-school");
+    if (mine) mine.onchange = () => {
+      const u = Auth.user();
+      if (!u) return;
+      u.schoolId = mine.value;
+      u.hasSchoolChildren = !!mine.value;
+      Store.log("update", "user", u.id, u.name + (u.schoolId ? " · " + (Store.schoolById(u.schoolId) || {}).short : " · no school"));
+      Store.save();
+      UI.toast("Saved");
+    };
+    if (!Auth.isAdmin()) return;
+    document.querySelectorAll("[data-school]").forEach((sel) => {
+      sel.onchange = () => {
+        const u = Store.data.users.find((x) => x.id === sel.getAttribute("data-school"));
+        if (!u) return;
+        u.schoolId = sel.value;
+        u.hasSchoolChildren = !!sel.value;
+        Store.save();
+        this.renderSettings();
+      };
+    });
+    document.querySelectorAll("[data-delh]").forEach((b) => b.onclick = () => {
+      Store.data.schoolHolidays = (Store.data.schoolHolidays || []).filter((h) => h.id !== b.getAttribute("data-delh"));
+      Store.save();
+      this.renderSettings();
+    });
+    const hf = document.getElementById("hol-form");
+    if (hf) hf.onsubmit = (e) => {
+      e.preventDefault();
+      const start = UI.val(hf, "start");
+      const end = UI.val(hf, "end");
+      if (end < start) return UI.toast("End must be on or after the start");
+      Store.data.schoolHolidays.push({
+        id: CryptoUtil.uid("sh"),
+        label: UI.val(hf, "label"),
+        kind: UI.val(hf, "kind"),
+        start,
+        end
+      });
+      Store.save();
+      UI.toast("Holiday dates added");
+      this.renderSettings();
+    };
   },
 
   approvalsCard() {
@@ -1241,7 +1422,8 @@ const App = {
     return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3><p class="muted">PINs are stored as SHA-256 + salt. Raw PINs are never saved.</p>' +
       Store.data.users.map((u) => "<div class='row'><div><b>" + UI.esc(u.name) + "</b><div class='muted'>" + u.role +
         (u.approvedBy ? " · approved by " + UI.esc(Store.userName(u.approvedBy)) + (u.approvedAt ? " · " + UI.fmtTime(u.approvedAt) : "") : "") +
-        "</div></div>" +
+        "</div><label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
+        this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
         (u.id !== Auth.user().id ? "<button class='text-btn' data-delu='" + u.id + "'>Remove</button>" : "") + "</div>").join("") +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
       '<label class="field"><span>New 4–6 digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required></label><button class="btn">Add person</button></form></div>';
