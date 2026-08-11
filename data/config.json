@@ -8,6 +8,6 @@
     "publicKey": "0rxX1z_w5bmTDZRU8",
     "serviceId": "service_qqq7jsf",
     "templateId": "template_wzfltio",
-    "setup": "EmailJS is configured. Template fields: to_email, to_name, subject, message, reply_to."
+    "setup": "EmailJS configured. Template To Email must be {{to_email}}. Body: Hello {{to_name}}, {{message}}. Account→Security: allow browser origin for france.directestates.co.uk."
   }
 }

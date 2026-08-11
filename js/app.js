@@ -1274,17 +1274,27 @@ window.App = {
       if (saveBtn) saveBtn.disabled = true;
       try {
         Store.save();
-        if (isNew && window.Notify) {
-          try { await Notify.notifyBooking(next); Store.save(); } catch (_) { /* offline */ }
+        let mailNote = "";
+        if (isNew && next.status !== "blocked" && window.Notify) {
+          try {
+            const mailed = await Notify.notifyBooking(next);
+            Store.save();
+            if (mailed > 0) mailNote = " · emailed " + mailed;
+            else if (Notify.lastError) mailNote = " · email failed";
+            else mailNote = " · no email alerts on";
+          } catch (err) {
+            mailNote = " · email failed";
+            if (window.Notify) Notify.lastError = String(err && err.message ? err.message : err);
+          }
         }
         const synced = await Store.pushRemote();
         UI.closeModal();
         const savedMsg = next.status === "pending"
           ? "Stay saved as pending — it becomes confirmed after 3 days."
           : (next.status === "blocked" ? "Dates blocked" : "Stay saved as confirmed");
-        UI.toast(synced
+        UI.toast((synced
           ? savedMsg
-          : savedMsg + " Saved on this computer only — the phone will not see it yet.");
+          : savedMsg + " Saved on this computer only — the phone will not see it yet.") + mailNote);
         this.renderCalendar();
       } finally {
         if (saveBtn) saveBtn.disabled = false;
@@ -2030,6 +2040,9 @@ window.App = {
 
   async renderSettings() {
     if (Auth.isAdmin()) await Store.pullRemote();
+    if (window.Notify) {
+      try { await Notify.init(); } catch (_) { /* offline */ }
+    }
     const acts = Store.data.activity.slice(0, 40);
     const admin = Auth.isAdmin();
     const cloudPeople = (Store._remoteUsers || []).filter((u) => u && u.id && u.id !== "u-admin").length;
@@ -2136,15 +2149,20 @@ window.App = {
 
   emailAlertsCard() {
     const me = Auth.user() || {};
+    const status = (window.Notify && Notify.cfg) ? Notify.statusLine() : "Save your email, then send a test.";
     return '<div class="card" style="margin-top:16px" id="email-alerts">' +
       "<h3>Booking emails</h3>" +
-      "<p>Get an email when someone books the house. New stays stay pending for 3 days, then become confirmed.</p>" +
+      "<p>Get an email when someone books the house. Choose <b>Straight away</b> to be notified as soon as a stay is saved.</p>" +
       '<form id="email-alerts-form">' +
       '<label class="field"><span>Your email</span><input name="email" type="email" autocomplete="email" required value="' + UI.esc(me.email || "") + '" placeholder="you@example.com"></label>' +
       '<label class="field"><span>When should we email you?</span><select name="emailNotify">' + this.emailNotifyOptions(me.emailNotify || "off") + "</select></label>" +
-      '<button class="btn primary" type="submit">Save email alerts</button></form>' +
+      '<div class="actions" style="margin-top:8px">' +
+      '<button class="btn primary" type="submit">Save email alerts</button>' +
+      '<button class="btn" type="button" id="email-test-btn">Send test email</button>' +
+      "</div></form>" +
+      "<p class='muted' id='email-status' style='margin-top:12px'>" + UI.esc(status) + "</p>" +
       (Auth.isAdmin()
-        ? "<p class='muted' style='margin-top:12px'>Emails send through EmailJS. Put your public key, service id and template id in <b>data/config.json</b> under <b>emailjs</b>. Until that is set, preferences still save but no message goes out.</p>"
+        ? "<p class='muted' style='margin-top:8px'>Admin checklist: EmailJS template <b>To Email</b> must be <code>{{to_email}}</code>, Gmail service connected, and in EmailJS Account → Security allow this website. Check EmailJS <b>Logs</b> if a test fails.</p>"
         : "") +
       "</div>";
   },
@@ -2152,24 +2170,51 @@ window.App = {
   bindEmailAlerts() {
     const form = document.getElementById("email-alerts-form");
     if (!form) return;
-    form.onsubmit = async (e) => {
-      e.preventDefault();
+    const statusEl = document.getElementById("email-status");
+    const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
+    const savePerson = async () => {
       const me = Auth.user();
-      if (!me) return;
+      if (!me) return null;
       const email = UI.val(form, "email").trim().toLowerCase();
       const emailNotify = UI.val(form, "emailNotify") || "off";
-      if (!Notify.validEmail(email)) return UI.toast("Please enter a real email address.");
+      if (!Notify.validEmail(email)) {
+        UI.toast("Please enter a real email address.");
+        return null;
+      }
       me.email = email;
       me.emailNotify = emailNotify;
       me.updatedAt = new Date().toISOString();
       Store.rememberUser(me);
       Auth.setSession(me);
       Store.save();
-      const synced = await Store.pushRemote();
-      UI.toast(synced
-        ? (emailNotify === "off" ? "Email saved · alerts off" : "Email alerts saved")
-        : "Saved on this device only");
-      this.renderSettings();
+      await Store.pushRemote();
+      return me;
+    };
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const me = await savePerson();
+      if (!me) return;
+      UI.toast(me.emailNotify === "off" ? "Email saved · alerts off" : "Email alerts saved");
+      setStatus(Notify.statusLine());
+    };
+    const testBtn = document.getElementById("email-test-btn");
+    if (testBtn) testBtn.onclick = async () => {
+      testBtn.disabled = true;
+      try {
+        const me = await savePerson();
+        if (!me) return;
+        setStatus("Sending test email…");
+        const ok = await Notify.sendTest(me.email, me.name || me.firstName || "Family");
+        if (ok) {
+          UI.toast("Test email sent to " + me.email);
+          setStatus("Test email sent to " + me.email + ". Check inbox and spam.");
+        } else {
+          UI.toast("Test email failed");
+          setStatus(Notify.lastError || "Test email failed. Check EmailJS logs.");
+        }
+      } finally {
+        testBtn.disabled = false;
+      }
     };
   },
 
