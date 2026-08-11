@@ -856,7 +856,9 @@ window.App = {
     const firstDow = (start.getDay() + 6) % 7;
     const days = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
     let html = '<section class="cal-month" id="' + (opts.idPrefix || "") + "cal-month-" + ym + '"><h3>' + title + '</h3><div class="cal-grid">' +
-      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d) => '<div class="cal-dow">' + d + "</div>").join("");
+      [
+        ["Mon", "M"], ["Tue", "T"], ["Wed", "W"], ["Thu", "T"], ["Fri", "F"], ["Sat", "S"], ["Sun", "S"]
+      ].map((d) => '<div class="cal-dow" title="' + d[0] + '"><span class="cal-dow-full">' + d[0] + '</span><span class="cal-dow-short">' + d[1] + "</span></div>").join("");
     for (let i = 0; i < firstDow; i++) html += '<div class="cal-day out"></div>';
     for (let day = 1; day <= days; day++) {
       const iso = start.toISOString().slice(0, 8) + String(day).padStart(2, "0");
@@ -869,7 +871,11 @@ window.App = {
         (selected ? " pick-on" : "") + (inRange ? " pick-range" : "") +
         '" data-day="' + iso + '"' + (opts.pick ? ' data-pick-day="' + iso + '"' : "") + "><b>" + day +
         (hol ? ' <span class="cal-flag" title="' + UI.esc(hol.label) + '">H</span>' : "") + "</b>" +
-        (opts.pick ? "" : stays.map((b) => '<a class="cal-pill" data-open="' + b.id + '">' + UI.esc((b.guests || b.notes || b.status).slice(0, 22)) + "</a>").join("")) +
+        (opts.pick ? "" : stays.map((b) => {
+          const text = String(b.guests || b.notes || b.status || "");
+          return '<a class="cal-pill" data-open="' + b.id + '" title="' + UI.esc(text) + '">' +
+            UI.esc(text.slice(0, 18)) + "</a>";
+        }).join("")) +
         "</div>";
     }
     return html + "</div></section>";

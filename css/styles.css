@@ -487,18 +487,37 @@ a.place-card {
 }
 .seg button.on { background: var(--bg-2); box-shadow: var(--shadow); }
 
-.cal-stack { display: flex; flex-direction: column; gap: 32px; padding-bottom: 48px; }
-.cal-month { scroll-margin-top: 16px; }
+.cal-stack { display: flex; flex-direction: column; gap: 32px; padding-bottom: 48px; max-width: 100%; }
+.cal-month { scroll-margin-top: 16px; max-width: 100%; min-width: 0; }
 .cal-month h3 { margin: 0 0 10px; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.cal-dow { text-align: center; font-size: 12px; color: var(--muted); font-weight: 700; }
+/* minmax(0,1fr) so long guest names cannot blow the week wider than the phone */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+}
+.cal-dow {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-dow-short { display: none; }
 .cal-day {
   min-height: 92px;
+  min-width: 0;
+  max-width: 100%;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 6px;
   cursor: pointer;
+  overflow: hidden;
 }
 .cal-day.available { background: #d7ead0; }
 .cal-day.booked,
@@ -583,7 +602,15 @@ a.place-card {
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .tabs button { min-height: 48px; }
 .urgent { color: var(--bad); font-weight: 800; }
-.cal-day b { font-size: 12px; }
+.cal-day b {
+  display: block;
+  font-size: 12px;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .cal-pill {
   display: block;
   font-size: 11px;
@@ -592,12 +619,15 @@ a.place-card {
   border-radius: 6px;
   padding: 2px 5px;
   margin-top: 4px;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: none;
 }
 .week-col { min-height: 180px; }
+#cal-body { max-width: 100%; min-width: 0; overflow: hidden; }
+#cal-hist { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -785,7 +815,8 @@ a.place-card {
 
 @media (max-width: 900px) {
   .grid.stats, .grid.two, .field-row, .date-pick-row { grid-template-columns: 1fr; }
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: 1fr; min-width: 0; }
+  .app, .view, #cal-body, .cal-stack, .cal-month { min-width: 0; max-width: 100%; }
   .sidenav {
     display: none; position: fixed; inset: 65px 0 auto 0; z-index: 15;
     border-bottom: 1px solid var(--line);
@@ -794,10 +825,37 @@ a.place-card {
   .nav-toggle { display: flex; }
   .top-search { display: none; }
   .brand em, .who { display: none; }
-  .view { padding: 18px 14px 90px; }
-  .cal-day { min-height: 64px; }
+  .view { padding: 18px 12px 90px; overflow-x: hidden; }
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters .seg,
+  .filters .actions { width: 100%; }
+  .filters .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .filters .actions .btn { width: 100%; justify-content: center; padding-left: 8px; padding-right: 8px; }
+  .cal-grid { gap: 3px; }
+  .cal-dow { font-size: 11px; }
+  .cal-day { min-height: 58px; padding: 4px 3px; border-radius: 10px; }
+  .cal-day b { font-size: 11px; }
+  .cal-flag { font-size: 9px; padding: 0 3px; margin-left: 1px; }
+  .cal-pill { font-size: 9px; padding: 1px 3px; margin-top: 3px; }
+  .week-col { min-height: 120px; }
   .highlights { grid-template-columns: 1fr; }
   .live-links { grid-template-columns: 1fr; }
+  .page-head { gap: 10px; }
+  .page-head .actions { width: 100%; }
+}
+
+@media (max-width: 520px) {
+  .view { padding: 14px 10px 90px; }
+  .cal-grid { gap: 2px; }
+  .cal-dow { font-size: 10px; letter-spacing: 0; }
+  .cal-dow-full { display: none; }
+  .cal-dow-short { display: inline; }
+  .cal-day { min-height: 52px; padding: 3px 2px; border-radius: 8px; }
+  .cal-day b { font-size: 10px; }
+  .cal-pill { font-size: 8px; }
+  .cal-month h3 { font-size: 1.35rem; }
+  .legend { gap: 10px; font-size: 12px; }
+  .holiday-banner { font-size: 14px; padding: 12px; }
 }
 
 .stay-review-screen {
