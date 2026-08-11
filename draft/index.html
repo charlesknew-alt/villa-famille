@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f3d3a" />
+  <title>The Family House — design draft</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="draft.css" />
+</head>
+<body>
+  <div class="draft-banner" role="note">
+    Design draft only — not the live house. PIN pad is visual. Sync fix lives in a separate PR.
+  </div>
+
+  <section class="hero" aria-label="Welcome">
+    <div class="hero-media" aria-hidden="true">
+      <img src="assets/family-house-hero.jpg" alt="" />
+      <div class="hero-shade"></div>
+    </div>
+
+    <header class="hero-top">
+      <p class="place">La Croix-Valmer · Var</p>
+      <button type="button" class="ghost-link" id="see-inside">Peek inside</button>
+    </header>
+
+    <div class="hero-copy">
+      <p class="brand">The Family House</p>
+      <h1>Come in when you are ready.</h1>
+      <p class="support">One private house for the whole family — calendar, travel, and the keys to the place near the Gulf of Saint-Tropez.</p>
+
+      <div class="pin-block" aria-label="PIN entry draft">
+        <div class="pin-dots" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </div>
+        <div class="pad" role="group" aria-label="Draft PIN pad">
+          <button type="button">1</button><button type="button">2</button><button type="button">3</button>
+          <button type="button">4</button><button type="button">5</button><button type="button">6</button>
+          <button type="button">7</button><button type="button">8</button><button type="button">9</button>
+          <button type="button" class="muted">Clear</button><button type="button">0</button><button type="button" class="enter">Enter</button>
+        </div>
+        <div class="cta-row">
+          <button type="button" class="textish">Create your PIN</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="inside" id="inside" hidden>
+    <div class="inside-shell">
+      <aside class="rail">
+        <p class="brand-sm">The Family House</p>
+        <nav>
+          <a class="on" href="#inside">Home</a>
+          <a href="#inside">Calendar</a>
+          <a href="#inside">Travel</a>
+          <a href="#inside">House</a>
+          <a href="#inside">Guide</a>
+        </nav>
+        <p class="rail-note">Signed in as Alex · News</p>
+      </aside>
+
+      <main class="inside-main">
+        <header class="inside-head">
+          <div>
+            <p class="eyebrow">This week</p>
+            <h2>The house is free from Friday.</h2>
+          </div>
+          <button type="button" class="solid">Book a stay</button>
+        </header>
+
+        <div class="month" aria-label="Draft calendar">
+          <div class="month-bar">
+            <strong>August 2026</strong>
+            <span>Green free · Clay booked</span>
+          </div>
+          <div class="month-grid">
+            <span class="dow">M</span><span class="dow">T</span><span class="dow">W</span><span class="dow">T</span><span class="dow">F</span><span class="dow">S</span><span class="dow">S</span>
+            <span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span><span class="empty"></span>
+            <button type="button" class="day free">1</button>
+            <button type="button" class="day free">2</button>
+            <button type="button" class="day booked">3</button>
+            <button type="button" class="day booked">4</button>
+            <button type="button" class="day booked">5</button>
+            <button type="button" class="day booked">6</button>
+            <button type="button" class="day booked">7</button>
+            <button type="button" class="day free">8</button>
+            <button type="button" class="day free">9</button>
+            <button type="button" class="day free">10</button>
+            <button type="button" class="day free today">11</button>
+            <button type="button" class="day free">12</button>
+            <button type="button" class="day free">13</button>
+            <button type="button" class="day free">14</button>
+            <button type="button" class="day free">15</button>
+            <button type="button" class="day free">16</button>
+            <button type="button" class="day free">17</button>
+            <button type="button" class="day free">18</button>
+            <button type="button" class="day free">19</button>
+            <button type="button" class="day free">20</button>
+            <button type="button" class="day holiday">21</button>
+            <button type="button" class="day holiday">22</button>
+            <button type="button" class="day holiday">23</button>
+            <button type="button" class="day holiday">24</button>
+            <button type="button" class="day holiday">25</button>
+            <button type="button" class="day holiday">26</button>
+            <button type="button" class="day holiday">27</button>
+            <button type="button" class="day free">28</button>
+            <button type="button" class="day free">29</button>
+            <button type="button" class="day free">30</button>
+            <button type="button" class="day free">31</button>
+          </div>
+        </div>
+
+        <div class="strip">
+          <article>
+            <h3>Next arrival</h3>
+            <p>News family · 21–27 Aug</p>
+          </article>
+          <article>
+            <h3>Travel</h3>
+            <p>Nice or Marseille, then the coast road.</p>
+          </article>
+          <article>
+            <h3>House note</h3>
+            <p>Pool cover on · bins Thursday.</p>
+          </article>
+        </div>
+
+        <p class="back-row"><button type="button" class="textish" id="back-hero">Back to welcome draft</button></p>
+      </main>
+    </div>
+  </section>
+
+  <script>
+    const hero = document.querySelector(".hero");
+    const inside = document.getElementById("inside");
+    document.getElementById("see-inside").onclick = () => {
+      hero.hidden = true;
+      inside.hidden = false;
+      window.scrollTo(0, 0);
+    };
+    document.getElementById("back-hero").onclick = () => {
+      inside.hidden = true;
+      hero.hidden = false;
+      window.scrollTo(0, 0);
+    };
+
+    const dots = [...document.querySelectorAll(".pin-dots i")];
+    let n = 0;
+    document.querySelectorAll(".pad button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const label = btn.textContent.trim();
+        if (label === "Clear") n = 0;
+        else if (label === "Enter") n = Math.min(n, 4);
+        else if (/\d/.test(label) && n < 4) n += 1;
+        dots.forEach((d, i) => d.classList.toggle("on", i < n));
+      });
+    });
+  </script>
+</body>
+</html>
