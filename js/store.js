@@ -140,7 +140,7 @@ const Store = {
       recent: rows.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5),
       largest: rows.slice().sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0)).slice(0, 3)
     };
-  },,
+  },
 
   contactName(id) {
     const c = (this.data.contacts || []).find((x) => x.id === id);

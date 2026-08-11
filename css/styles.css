@@ -56,6 +56,8 @@ img, video { max-width: 100%; border-radius: 12px; }
   overflow: hidden; clip: rect(0,0,0,0); border: 0;
 }
 
+[hidden] { display: none !important; }
+
 .boot-screen, .login-screen {
   min-height: 100vh;
   display: grid;

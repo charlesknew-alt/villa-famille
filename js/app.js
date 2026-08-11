@@ -1193,4 +1193,14 @@ const App = {
   }
 };
 
-document.addEventListener("DOMContentLoaded", () => App.init());
+document.addEventListener("DOMContentLoaded", () => {
+  App.init().catch((err) => {
+    const boot = document.getElementById("boot-screen");
+    if (boot) {
+      boot.hidden = false;
+      boot.innerHTML = "<p>Could not open the house.</p><p class='muted'>" +
+        String(err && err.message ? err.message : err) + "</p>";
+    }
+    console.error(err);
+  });
+});
