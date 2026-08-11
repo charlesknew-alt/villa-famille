@@ -8,7 +8,7 @@ const Store = {
     return {
       version: 1,
       house: { name: "The Family House", place: "La Croix-Valmer", region: "Var", lat: 43.2072, lon: 6.5694 },
-      users: [], bookings: [], documents: [], restaurants: [], reviews: [], contacts: [],
+      users: [], owners: [], bookings: [], documents: [], restaurants: [], places: [], reviews: [], contacts: [],
       maintenance: [], comments: [], recurring: [], expenses: [], inventory: [],
       checklistItems: [], checklistRecords: [], mapSpots: [], systems: {},
       ideas: [], announcements: [], activity: [], settings: {}
@@ -23,6 +23,7 @@ const Store = {
     } catch (_) { /* file:// or offline */ }
     if (!repo && window.HOUSE_DATA) repo = window.HOUSE_DATA;
     this.data = Object.assign(this.empty(), repo || {});
+    this.normalize();
     const draft = sessionStorage.getItem(this.key);
     if (draft) {
       try {
@@ -64,10 +65,82 @@ const Store = {
     if (this.data.activity.length > 200) this.data.activity.length = 200;
   },
 
+  normalize() {
+    const d = this.data;
+    d.places = d.places || [];
+    d.owners = d.owners || [];
+    d.reviews = d.reviews || [];
+    if (!d.places.length && (d.restaurants || []).length) {
+      d.places = d.restaurants.map((r) => Object.assign({ kind: "restaurant" }, r));
+    }
+    d.reviews.forEach((r) => {
+      if (!r.placeId && r.restaurantId) r.placeId = r.restaurantId;
+      if (!r.replies) r.replies = [];
+      if (!r.photos) r.photos = [];
+    });
+    if (!d.owners.length) {
+      d.owners = (d.users || []).filter((u) => u.role === "admin" || u.role === "family").map((u) => ({ id: u.id, name: u.name }));
+    }
+    (d.expenses || []).forEach((e) => {
+      e.currency = e.currency || "GBP";
+      e.type = e.type || "shared";
+      e.description = e.description || e.notes || e.supplier || "Expense";
+      e.paidBy = e.paidBy || e.createdBy || "";
+      e.receipts = e.receipts || [];
+      if (!e.splits) e.splits = [];
+    });
+  },
+
   userName(id) {
     const u = (this.data.users || []).find((x) => x.id === id);
-    return u ? u.name : "Someone";
+    if (u) return u.name;
+    const o = (this.data.owners || []).find((x) => x.id === id);
+    return o ? o.name : "Someone";
   },
+
+  ownerList() {
+    return (this.data.owners || []).slice();
+  },
+
+  pound(n) {
+    const v = Math.round(Number(n || 0) * 100) / 100;
+    return "£" + v.toFixed(2);
+  },
+
+  equalSplits(paidBy, amount) {
+    const owners = this.ownerList();
+    const n = Math.max(1, owners.length);
+    const share = Math.round((Number(amount) / n) * 100) / 100;
+    let allocated = 0;
+    return owners.map((o, i) => {
+      const amt = i === owners.length - 1 ? Math.round((Number(amount) - allocated) * 100) / 100 : share;
+      allocated += amt;
+      return { userId: o.id, amount: amt, status: o.id === paidBy ? "settled" : "owed" };
+    });
+  },
+
+  expenseOutstanding(e) {
+    if (!e || e.type !== "shared") return 0;
+    return (e.splits || []).filter((s) => s.status === "owed").reduce((n, s) => n + Number(s.amount || 0), 0);
+  },
+
+  moneySummary(list) {
+    const rows = list || this.data.expenses || [];
+    const year = String(new Date().getFullYear());
+    const month = UI.today().slice(0, 7);
+    const sum = (xs) => xs.reduce((n, e) => n + Number(e.amount || 0), 0);
+    const byCat = {};
+    rows.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + Number(e.amount || 0); });
+    const owed = rows.filter((e) => e.type === "shared").reduce((n, e) => n + this.expenseOutstanding(e), 0);
+    return {
+      month: sum(rows.filter((e) => (e.date || "").startsWith(month))),
+      year: sum(rows.filter((e) => (e.date || "").startsWith(year))),
+      byCat,
+      owed,
+      recent: rows.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5),
+      largest: rows.slice().sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0)).slice(0, 3)
+    };
+  },,
 
   contactName(id) {
     const c = (this.data.contacts || []).find((x) => x.id === id);
@@ -148,14 +221,15 @@ const Store = {
     this.download("bookings.csv", this.toCsv(d.bookings, ["id", "arrival", "departure", "guestCount", "guests", "notes", "status", "createdBy"]), "text/csv");
     this.download("contacts.csv", this.toCsv(d.contacts, ["id", "name", "business", "category", "phone", "email", "notes", "lastUsed"]), "text/csv");
     this.download("maintenance.csv", this.toCsv(d.maintenance, ["id", "title", "category", "priority", "status", "reporter", "date", "assignedContractorId", "estimatedCompletion"]), "text/csv");
-    this.download("expenses.csv", this.toCsv(d.expenses, ["id", "category", "amount", "currency", "date", "supplier", "notes", "issueId"]), "text/csv");
-    this.download("restaurants.csv", this.toCsv(d.restaurants, ["id", "name", "town", "cuisine", "rating", "phone", "address", "notes"]), "text/csv");
+    this.download("expenses.csv", this.toCsv((d.expenses || []).map((e) => Object.assign({}, e, { paidBy: this.userName(e.paidBy), outstanding: this.expenseOutstanding(e) })), ["id", "description", "amount", "currency", "date", "category", "type", "paidBy", "notes", "outstanding"]), "text/csv");
+    this.download("places.csv", this.toCsv(d.places || d.restaurants || [], ["id", "kind", "name", "town", "cuisine", "rating", "phone", "address", "notes"]), "text/csv");
     this.download("inventory.csv", this.toCsv(d.inventory, ["id", "name", "category", "location", "purchaseDate", "warrantyUntil", "notes"]), "text/csv");
   },
 
   importJson(obj) {
     if (!obj || typeof obj !== "object") throw new Error("Not a house file");
     this.data = Object.assign(this.empty(), obj.house && obj.users ? obj : (obj.data || obj));
+    this.normalize();
     this.save();
   },
 

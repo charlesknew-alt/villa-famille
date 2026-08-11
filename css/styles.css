@@ -397,6 +397,8 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
 .book-links a { min-height: 44px; }
 .price { font-family: var(--serif); font-size: 28px; margin: 0; }
 .note-sample { font-size: 13px; color: var(--muted); }
+.comment form { display: flex; gap: 8px; margin-top: 8px; }
+.comment form input { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; background: var(--bg); }
 
 @media (max-width: 900px) {
   .grid.stats, .grid.two, .field-row { grid-template-columns: 1fr; }

@@ -35,7 +35,11 @@ PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never s
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
 - **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
 - **Travel** — London (LHR / LGW / STN / LCY) to Nice, Marseille, Toulon. Sample prices, directs, drive times to La Croix-Valmer, links to Google Flights and Skyscanner.
-- News, ideas, food nearby, search, dark mode, activity log.
+- **Local guide** — restaurants, beaches, attractions, shops. Stars, comments, photos, replies.
+- **Expenses** — GBP, who paid, receipts, personal vs shared. Shared bills split equally across four owners. Settle up when reimbursed.
+- News, ideas, search, dark mode, activity log.
+
+Seed owners for splits: House Admin, Claire, John Smith, Anne. Example: Drainage Repair **£250** paid by John Smith on 10/08/2026 → £62.50 each.
 
 ## Where the data lives
 

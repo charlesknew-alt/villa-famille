@@ -120,7 +120,9 @@ const App = {
       travel: () => this.renderTravel(),
       maintenance: () => this.renderMaintenance(),
       house: () => this.renderHouse(),
-      restaurants: () => this.renderRestaurants(),
+      restaurants: () => this.renderGuide(),
+      guide: () => this.renderGuide(),
+      expenses: () => this.renderExpenses(),
       ideas: () => this.renderIdeas(),
       announcements: () => this.renderNews(),
       settings: () => this.renderSettings(),
@@ -165,6 +167,7 @@ const App = {
         this.stat(open.length, "Open issues") +
         this.stat(due.length, "Tasks due") +
       "</div>" +
+      this.dashMoney() +
       '<div class="grid two" style="margin-top:16px">' +
         '<div class="card"><h3>Who is at the house?</h3>' + this.whoBlock(here, next) + "</div>" +
         '<div class="card" id="weather-card"><h3>Weather · La Croix-Valmer</h3><p class="muted">Checking the sky…</p></div>' +
@@ -186,7 +189,7 @@ const App = {
       "</div>" +
       '<div class="card" style="margin-top:16px"><h3>Quick links</h3><div class="quick-links">' +
         '<a href="#calendar">Calendar</a><a href="#house">House guide</a><a href="#house">Map & shut-offs</a>' +
-        '<a href="#travel">Travel</a><a href="#restaurants">Food</a></div></div>';
+        '<a href="#travel">Travel</a><a href="#guide">Local guide</a><a href="#expenses">Expenses</a></div></div>';
     this.afterRender();
     document.querySelector('[href="#calendar"].btn') && (document.querySelector("a.btn.primary").onclick = (e) => {
       e.preventDefault(); location.hash = "calendar"; setTimeout(() => this.bookingForm(), 50);
@@ -208,6 +211,17 @@ const App = {
 
   stat(n, label) {
     return '<div class="card stat"><b>' + UI.esc(n) + "</b><span>" + UI.esc(label) + "</span></div>";
+  },
+
+  dashMoney() {
+    const s = Store.moneySummary();
+    return '<div class="grid stats" style="margin-top:16px">' +
+      this.stat(Store.pound(s.month), "Spent this month") +
+      this.stat(Store.pound(s.year), "Spent this year") +
+      this.stat(Store.pound(s.owed), "Still to settle") +
+      this.stat(s.largest[0] ? Store.pound(s.largest[0].amount) : "—", "Largest bill") +
+      '</div><p class="muted" style="margin:8px 0 0"><a href="#expenses">Open expenses</a>' +
+      (s.recent[0] ? " · Latest: " + UI.esc(s.recent[0].description) + " " + Store.pound(s.recent[0].amount) : "") + "</p>";
   },
 
   whoBlock(here, next) {
@@ -589,7 +603,6 @@ const App = {
     if (t === "leave") this.bindLeave();
     if (t === "docs") this.bindDocs();
     if (t === "people") this.bindPeople();
-    if (t === "money" && document.getElementById("add-exp")) document.getElementById("add-exp").onclick = () => this.expenseForm();
     if (t === "stock" && document.getElementById("add-inv")) document.getElementById("add-inv").onclick = () => this.invForm();
   },
 
@@ -672,38 +685,9 @@ const App = {
   },
 
   houseMoney() {
-    const list = Store.data.expenses.slice().sort((a, b) => b.date.localeCompare(a.date));
-    const year = String(new Date().getFullYear());
-    const month = UI.today().slice(0, 7);
-    const sum = (rows) => rows.reduce((n, e) => n + Number(e.amount || 0), 0);
-    const y = list.filter((e) => e.date.startsWith(year));
-    const m = list.filter((e) => e.date.startsWith(month));
-    return '<div class="grid stats">' + this.stat("€" + sum(m), "This month") + this.stat("€" + sum(y), "This year") + this.stat(list.length, "Entries") + "</div>" +
-      (Auth.canEdit() ? '<p><button class="btn primary" id="add-exp" type="button">Add expense</button></p>' : "") +
-      '<table class="table"><tr><th>Date</th><th>What</th><th>Supplier</th><th>Amount</th></tr>' +
-      list.map((e) => "<tr><td>" + UI.fmt(e.date) + "</td><td>" + UI.esc(e.category) + "<div class='muted'>" + UI.esc(e.notes) + "</div></td><td>" + UI.esc(e.supplier) + "</td><td>€" + e.amount + "</td></tr>").join("") +
-      "</table>";
-  },
-
-  expenseForm() {
-    UI.modal("Add expense",
-      '<form id="ex-form"><div class="field-row"><label class="field"><span>Amount €</span><input name="amount" type="number" step="0.01" required></label>' +
-      '<label class="field"><span>Date</span><input name="date" type="date" value="' + UI.today() + '"></label></div>' +
-      '<label class="field"><span>Type</span><select name="category"><option>maintenance</option><option>cleaning</option><option>utilities</option><option>improvements</option><option>emergency</option></select></label>' +
-      '<label class="field"><span>Supplier</span><input name="supplier" required></label>' +
-      '<label class="field"><span>Notes</span><input name="notes"></label>' +
-      '<label class="field"><span>Linked issue</span><select name="issueId"><option value="">None</option>' +
-      Store.data.maintenance.map((m) => "<option value='" + m.id + "'>" + UI.esc(m.title) + "</option>").join("") + "</select></label>" +
-      '<button class="btn primary" type="submit">Save</button></form>');
-    document.getElementById("ex-form").onsubmit = (e) => {
-      e.preventDefault();
-      const f = e.target;
-      Store.data.expenses.unshift({ id: CryptoUtil.uid("e"), category: UI.val(f, "category"), amount: Number(UI.val(f, "amount")), currency: "EUR", date: UI.val(f, "date"), supplier: UI.val(f, "supplier"), notes: UI.val(f, "notes"), issueId: UI.val(f, "issueId"), createdBy: Auth.user().id });
-      Store.log("create", "expense", "", UI.val(f, "supplier"));
-      Store.save();
-      UI.closeModal();
-      this.paintHouse();
-    };
+    const s = Store.moneySummary();
+    return '<div class="card"><h3>House money</h3><p>This month ' + Store.pound(s.month) + " · This year " + Store.pound(s.year) +
+      " · Outstanding " + Store.pound(s.owed) + '</p><p><a class="btn primary" href="#expenses">Open expenses</a></p></div>';
   },
 
   invForm() {
@@ -829,46 +813,249 @@ const App = {
     this.afterRender();
   },
 
-  renderRestaurants() {
+  placeKinds() {
+    return [["", "All"], ["restaurant", "Restaurants"], ["beach", "Beaches"], ["attraction", "Attractions"], ["shop", "Shops"], ["other", "Other"]];
+  },
+
+  avgRating(placeId) {
+    const revs = (Store.data.reviews || []).filter((r) => r.placeId === placeId && r.rating);
+    if (!revs.length) return 0;
+    return Math.round(revs.reduce((n, r) => n + Number(r.rating), 0) / revs.length);
+  },
+
+  renderGuide() {
+    if (this.params.id && (Store.data.places || []).find((p) => p.id === this.params.id)) return this.renderPlace(this.params.id);
     const q = (this.foodQ || "").toLowerCase();
-    const town = this.foodTown || "";
-    let rows = Store.data.restaurants.filter((r) => !q || (r.name + r.town + r.cuisine + r.notes).toLowerCase().includes(q));
-    if (town) rows = rows.filter((r) => r.town === town);
-    const towns = [...new Set(Store.data.restaurants.map((r) => r.town))];
+    const kind = this.foodKind || "";
+    let rows = (Store.data.places || []).filter((r) => !q || (r.name + r.town + (r.cuisine || "") + (r.notes || "") + r.kind).toLowerCase().includes(q));
+    if (kind) rows = rows.filter((r) => r.kind === kind);
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Food nearby", "La Croix-Valmer, Gigaro, Gassin, Cavalaire",
-      Auth.canEdit() ? '<button class="btn" id="add-r">Add place</button>' : "") +
-      '<div class="filters"><input class="search-box" id="food-q" placeholder="Search" value="' + UI.esc(this.foodQ || "") + '">' +
-      this.select("food-town", [["","All towns"]].concat(towns.map((t) => [t, t])), town) + "</div>" +
-      '<div class="grid cards">' + rows.map((r) => {
-        const revs = Store.data.reviews.filter((x) => x.restaurantId === r.id);
-        return "<div class='card'><h3>" + UI.esc(r.name) + "</h3><p class='stars'>" + "★".repeat(r.rating || 0) + "</p><p>" + UI.esc(r.cuisine) + " · " + UI.esc(r.town) + "</p><p>" + UI.esc(r.notes) + "</p>" +
-          (r.phone ? "<p><a href='tel:" + UI.esc(r.phone) + "'>" + UI.esc(r.phone) + "</a></p>" : "") +
-          (r.website ? "<p><a href='" + UI.esc(r.website) + "' target='_blank' rel='noopener'>Website</a></p>" : "") +
-          revs.map((v) => "<div class='comment'>" + UI.esc(v.text) + " · " + UI.esc(Store.userName(v.createdBy)) + "</div>").join("") +
-          '<form data-rev="' + r.id + '"><input name="text" placeholder="Add a note" required><button class="btn" type="submit">Save</button></form></div>';
+    view.innerHTML = this.head("Local guide", "Restaurants, beaches, shops and days out near La Croix-Valmer",
+      Auth.canEdit() ? '<button class="btn primary" id="add-r" type="button">Add a place</button>' : "") +
+      '<div class="tabs">' + this.placeKinds().map((k) => '<button type="button" class="btn ' + (kind === k[0] ? "primary" : "") + '" data-kind="' + k[0] + '">' + k[1] + "</button>").join("") + "</div>" +
+      '<input class="search-box" id="food-q" placeholder="Search places" value="' + UI.esc(this.foodQ || "") + '">' +
+      '<div class="grid cards" style="margin-top:16px">' + rows.map((r) => {
+        const stars = this.avgRating(r.id) || r.rating || 0;
+        const n = (Store.data.reviews || []).filter((x) => x.placeId === r.id).length;
+        return "<a class='card' href='#guide/" + r.id + "' style='text-decoration:none;color:inherit'><span class='chip'>" + UI.esc(r.kind) +
+          "</span><h3>" + UI.esc(r.name) + "</h3><p class='stars'>" + "★".repeat(stars) + "</p><p>" + UI.esc(r.town) +
+          (r.cuisine ? " · " + UI.esc(r.cuisine) : "") + "</p><p class='muted'>" + UI.esc(r.notes || "") + "</p><p class='muted'>" + n + " reviews</p></a>";
       }).join("") + "</div>";
-    document.getElementById("food-q").oninput = (e) => { this.foodQ = e.target.value; this.renderRestaurants(); };
-    document.getElementById("food-town").onchange = (e) => { this.foodTown = e.target.value; this.renderRestaurants(); };
-    view.querySelectorAll("[data-rev]").forEach((f) => f.onsubmit = (e) => {
-      e.preventDefault();
-      Store.data.reviews.push({ id: CryptoUtil.uid("rv"), restaurantId: f.getAttribute("data-rev"), rating: 5, text: UI.val(f, "text"), createdBy: Auth.user().id, createdAt: new Date().toISOString() });
-      Store.save();
-      this.renderRestaurants();
-    });
+    document.getElementById("food-q").oninput = (e) => { this.foodQ = e.target.value; this.renderGuide(); };
+    view.querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => { this.foodKind = b.getAttribute("data-kind"); this.renderGuide(); });
     const add = document.getElementById("add-r");
-    if (add) add.onclick = () => {
-      UI.modal("Add restaurant", '<form id="rf"><label class="field"><span>Name</span><input name="name" required></label>' +
-        '<div class="field-row"><label class="field"><span>Town</span><input name="town"></label><label class="field"><span>Cuisine</span><input name="cuisine"></label></div>' +
-        '<label class="field"><span>Phone</span><input name="phone"></label><label class="field"><span>Notes</span><textarea name="notes"></textarea></label>' +
-        '<label class="field"><span>Rating</span><input name="rating" type="number" min="1" max="5" value="4"></label><button class="btn primary">Save</button></form>');
-      document.getElementById("rf").onsubmit = (e) => {
-        e.preventDefault();
-        Store.data.restaurants.push({ id: CryptoUtil.uid("r"), name: UI.val(e.target, "name"), town: UI.val(e.target, "town"), address: "", phone: UI.val(e.target, "phone"), website: "", cuisine: UI.val(e.target, "cuisine"), rating: Number(UI.val(e.target, "rating")), notes: UI.val(e.target, "notes"), createdBy: Auth.user().id, createdAt: new Date().toISOString() });
-        Store.save(); UI.closeModal(); this.renderRestaurants();
-      };
+    if (add) add.onclick = () => this.placeForm();
+    this.afterRender();
+  },
+
+  renderPlace(id) {
+    const r = Store.data.places.find((p) => p.id === id);
+    const revs = (Store.data.reviews || []).filter((x) => x.placeId === id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const view = document.getElementById("view");
+    view.innerHTML = this.head(r.name, r.kind + " · " + r.town, '<a class="btn" href="#guide">Back</a>') +
+      '<div class="card"><p class="stars">' + "★".repeat(this.avgRating(id) || r.rating || 0) + "</p><p>" + UI.esc(r.notes || "") + "</p>" +
+      (r.address ? "<p>" + UI.esc(r.address) + "</p>" : "") +
+      (r.phone ? "<p><a href='tel:" + UI.esc(r.phone) + "'>" + UI.esc(r.phone) + "</a></p>" : "") +
+      (r.website ? "<p><a href='" + UI.esc(r.website) + "' target='_blank' rel='noopener'>Website</a></p>" : "") +
+      "</div><div class='card' style='margin-top:16px'><h3>Reviews</h3>" +
+      revs.map((v) => "<div class='comment'><b>" + UI.esc(Store.userName(v.createdBy)) + "</b> · " + UI.fmtTime(v.createdAt) +
+        " · <span class='stars'>" + "★".repeat(v.rating || 0) + "</span><div>" + UI.esc(v.text) + "</div>" +
+        this.media(v.photos, []) +
+        (v.replies || []).map((rp) => "<div class='comment' style='margin-left:16px'><b>" + UI.esc(Store.userName(rp.createdBy)) + "</b> · " +
+          UI.fmtTime(rp.createdAt) + "<div>" + UI.esc(rp.text) + "</div></div>").join("") +
+        '<form data-reply="' + v.id + '"><input name="text" placeholder="Reply or add an update" required><button class="btn" type="submit">Reply</button></form></div>'
+      ).join("") +
+      '<form id="rev-form"><label class="field"><span>Your review</span><textarea name="text" rows="3" required></textarea></label>' +
+      '<div class="field-row"><label class="field"><span>Stars</span><select name="rating"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label>' +
+      '<label class="field"><span>Photo</span><input type="file" name="photo" accept="image/*"></label></div>' +
+      '<button class="btn primary" type="submit">Post review</button></form></div>';
+    view.querySelectorAll("[data-reply]").forEach((f) => f.onsubmit = (e) => {
+      e.preventDefault();
+      const rev = Store.data.reviews.find((x) => x.id === f.getAttribute("data-reply"));
+      rev.replies = rev.replies || [];
+      rev.replies.push({ id: CryptoUtil.uid("rp"), text: UI.val(f, "text"), createdBy: Auth.user().id, createdAt: new Date().toISOString() });
+      Store.log("reply", "review", rev.id, r.name);
+      Store.save();
+      this.renderPlace(id);
+    });
+    document.getElementById("rev-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const photos = [];
+      const file = e.target.elements.photo.files[0];
+      try {
+        if (file) photos.push(await UI.fileToData(file, 3));
+      } catch (err) { return UI.toast(err.message); }
+      Store.data.reviews.unshift({
+        id: CryptoUtil.uid("rv"), placeId: id, restaurantId: id,
+        rating: Number(UI.val(e.target, "rating")), text: UI.val(e.target, "text"),
+        photos, replies: [], createdBy: Auth.user().id, createdAt: new Date().toISOString()
+      });
+      Store.log("review", "place", id, r.name);
+      Store.save();
+      this.renderPlace(id);
     };
     this.afterRender();
+  },
+
+  placeForm() {
+    UI.modal("Add a place",
+      '<form id="rf"><label class="field"><span>Name</span><input name="name" required></label>' +
+      '<div class="field-row"><label class="field"><span>Type</span><select name="kind"><option value="restaurant">Restaurant</option><option value="beach">Beach</option><option value="attraction">Attraction</option><option value="shop">Shop</option><option value="other">Other</option></select></label>' +
+      '<label class="field"><span>Town</span><input name="town" value="La Croix-Valmer"></label></div>' +
+      '<label class="field"><span>Phone</span><input name="phone"></label>' +
+      '<label class="field"><span>Cuisine / tag</span><input name="cuisine" placeholder="Optional"></label>' +
+      '<label class="field"><span>Notes</span><textarea name="notes"></textarea></label>' +
+      '<button class="btn primary">Save</button></form>');
+    document.getElementById("rf").onsubmit = (e) => {
+      e.preventDefault();
+      const id = CryptoUtil.uid("p");
+      Store.data.places.push({
+        id, kind: UI.val(e.target, "kind"), name: UI.val(e.target, "name"), town: UI.val(e.target, "town"),
+        address: "", phone: UI.val(e.target, "phone"), website: "", cuisine: UI.val(e.target, "cuisine"),
+        rating: 0, notes: UI.val(e.target, "notes"), createdBy: Auth.user().id, createdAt: new Date().toISOString()
+      });
+      Store.log("create", "place", id, UI.val(e.target, "name"));
+      Store.save();
+      UI.closeModal();
+      location.hash = "guide/" + id;
+      this.route();
+    };
+  },
+
+  expCats() {
+    return ["drainage", "plumbing", "pool", "cleaning", "gardening", "furniture", "utilities", "improvements", "emergency"];
+  },
+
+  renderExpenses() {
+    this.expFilter = this.expFilter || { category: "", paidBy: "", type: "", from: "", to: "" };
+    const f = this.expFilter;
+    let rows = (Store.data.expenses || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    if (f.category) rows = rows.filter((e) => e.category === f.category);
+    if (f.paidBy) rows = rows.filter((e) => e.paidBy === f.paidBy);
+    if (f.type) rows = rows.filter((e) => e.type === f.type);
+    if (f.from) rows = rows.filter((e) => e.date >= f.from);
+    if (f.to) rows = rows.filter((e) => e.date <= f.to);
+    const s = Store.moneySummary(rows);
+    const cats = Object.keys(s.byCat).sort((a, b) => s.byCat[b] - s.byCat[a]);
+    const view = document.getElementById("view");
+    view.innerHTML = this.head("Expenses", "House bills in pounds. Shared costs split between the four owners.",
+      Auth.canEdit() ? '<button class="btn primary" id="add-exp" type="button">Add expense</button>' : "") +
+      '<div class="grid stats">' +
+        this.stat(Store.pound(s.month), "This month") +
+        this.stat(Store.pound(s.year), "This year") +
+        this.stat(Store.pound(s.owed), "Still owed") +
+        this.stat(s.largest[0] ? Store.pound(s.largest[0].amount) : "—", "Largest") +
+      "</div>" +
+      '<div class="card" style="margin-top:16px"><h3>Spending by category</h3>' +
+      (cats.length ? cats.map((c) => "<div class='row'><span>" + UI.esc(c) + "</span><b>" + Store.pound(s.byCat[c]) + "</b></div>").join("") : "<p class='empty'>No spend in this filter.</p>") +
+      "</div>" +
+      '<div class="filters" style="margin-top:16px">' +
+        this.select("ex-type", [["", "All types"], ["shared", "Shared property"], ["personal", "Personal"]], f.type) +
+        this.select("ex-cat", [["", "All categories"]].concat(this.expCats().map((c) => [c, c])), f.category) +
+        this.select("ex-who", [["", "Anyone paid"]].concat(Store.ownerList().map((o) => [o.id, o.name])), f.paidBy) +
+        '<label class="field"><span>From</span><input id="ex-from" type="date" value="' + UI.esc(f.from) + '"></label>' +
+        '<label class="field"><span>To</span><input id="ex-to" type="date" value="' + UI.esc(f.to) + '"></label>' +
+      "</div>" +
+      '<div class="card" style="margin-top:8px"><h3>Recent</h3>' +
+      rows.map((e) => {
+        const out = Store.expenseOutstanding(e);
+        return "<div class='row'><div><b>" + UI.esc(e.description) + "</b><div class='muted'>" + UI.fmt(e.date) + " · " + UI.esc(e.category) +
+          " · " + (e.type === "personal" ? "Personal" : "Shared") + " · Paid by " + UI.esc(Store.userName(e.paidBy)) +
+          (out ? " · Outstanding " + Store.pound(out) : "") + "</div></div>" +
+          "<div><b>" + Store.pound(e.amount) + '</b><div><button class="text-btn" data-ex="' + e.id + '">Open</button></div></div></div>';
+      }).join("") + "</div>" +
+      (s.largest.length ? '<div class="card" style="margin-top:16px"><h3>Largest</h3>' + s.largest.map((e) => "<div class='row'><span>" + UI.esc(e.description) + "</span><b>" + Store.pound(e.amount) + "</b></div>").join("") + "</div>" : "");
+    const apply = () => {
+      this.expFilter = {
+        type: document.getElementById("ex-type").value,
+        category: document.getElementById("ex-cat").value,
+        paidBy: document.getElementById("ex-who").value,
+        from: document.getElementById("ex-from").value,
+        to: document.getElementById("ex-to").value
+      };
+      this.renderExpenses();
+    };
+    ["ex-type", "ex-cat", "ex-who", "ex-from", "ex-to"].forEach((id) => { document.getElementById(id).onchange = apply; });
+    view.querySelectorAll("[data-ex]").forEach((b) => b.onclick = () => this.openExpense(b.getAttribute("data-ex")));
+    const add = document.getElementById("add-exp");
+    if (add) add.onclick = () => this.expenseForm();
+    this.afterRender();
+  },
+
+  openExpense(id) {
+    const e = Store.data.expenses.find((x) => x.id === id);
+    if (!e) return;
+    const canSettle = Auth.isAdmin() || (Auth.user() && Auth.user().id === e.paidBy);
+    const splits = (e.splits || []).map((s) => "<div class='row'><span>" + UI.esc(Store.userName(s.userId)) + " · " + Store.pound(s.amount) +
+      '</span><span class="chip ' + (s.status === "owed" ? "open" : "done") + '">' + s.status + "</span>" +
+      (canSettle && s.status === "owed" ? ' <button class="btn" data-set="' + s.userId + '">Mark paid</button>' : "") + "</div>").join("");
+    UI.modal(e.description,
+      "<p class='price'>" + Store.pound(e.amount) + "</p><p>" + UI.fmt(e.date) + " · " + UI.esc(e.category) + " · " +
+      (e.type === "personal" ? "Personal expense" : "Shared property expense") + "</p>" +
+      "<p>Paid by <b>" + UI.esc(Store.userName(e.paidBy)) + "</b>" + (e.supplier ? " · " + UI.esc(e.supplier) : "") + "</p>" +
+      "<p>" + UI.esc(e.notes || "") + "</p>" + this.media(e.receipts, [], "Receipts") +
+      (e.type === "shared" ? "<h3>Split</h3><p class='muted'>Equal split between owners. Outstanding " + Store.pound(Store.expenseOutstanding(e)) + "</p>" + splits : ""),
+      canSettle && e.type === "shared" && Store.expenseOutstanding(e) > 0
+        ? '<div class="actions"><button class="btn primary" id="settle-all" type="button">Settle up — all paid</button></div>' : "");
+    document.querySelectorAll("[data-set]").forEach((b) => b.onclick = () => {
+      const split = e.splits.find((s) => s.userId === b.getAttribute("data-set"));
+      if (split) split.status = "paid";
+      Store.log("reimburse", "expense", e.id, Store.userName(split.userId));
+      Store.save();
+      UI.toast("Marked paid");
+      this.openExpense(id);
+    });
+    const all = document.getElementById("settle-all");
+    if (all) all.onclick = () => {
+      e.splits.forEach((s) => { if (s.status === "owed") s.status = "settled"; });
+      Store.log("settle", "expense", e.id, e.description);
+      Store.save();
+      UI.closeModal();
+      UI.toast("Settled");
+      this.renderExpenses();
+    };
+  },
+
+  expenseForm() {
+    const owners = Store.ownerList();
+    UI.modal("Add expense",
+      '<form id="ex-form"><label class="field"><span>Description</span><input name="description" required placeholder="Drainage Repair"></label>' +
+      '<div class="field-row"><label class="field"><span>Amount £</span><input name="amount" type="number" step="0.01" required></label>' +
+      '<label class="field"><span>Date</span><input name="date" type="date" value="' + UI.today() + '"></label></div>' +
+      '<div class="field-row"><label class="field"><span>Category</span><select name="category">' + this.expCats().map((c) => "<option>" + c + "</option>").join("") + "</select></label>" +
+      '<label class="field"><span>Type</span><select name="type"><option value="shared">Shared property</option><option value="personal">Personal</option></select></label></div>' +
+      '<label class="field"><span>Who paid</span><select name="paidBy">' + owners.map((o) => "<option value='" + o.id + "'" + (Auth.user() && o.id === Auth.user().id ? " selected" : "") + ">" + UI.esc(o.name) + "</option>").join("") + "</select></label>" +
+      '<label class="field"><span>Supplier</span><input name="supplier"></label>' +
+      '<label class="field"><span>Notes</span><textarea name="notes"></textarea></label>' +
+      '<label class="field"><span>Receipt / photo</span><input type="file" name="receipt" accept="image/*,.pdf"></label>' +
+      '<button class="btn primary" type="submit">Save</button></form>');
+    document.getElementById("ex-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const receipts = [];
+      try {
+        if (f.elements.receipt.files[0]) receipts.push(await UI.fileToData(f.elements.receipt.files[0], 3));
+      } catch (err) { return UI.toast(err.message); }
+      const amount = Number(UI.val(f, "amount"));
+      const paidBy = UI.val(f, "paidBy");
+      const type = UI.val(f, "type");
+      const next = {
+        id: CryptoUtil.uid("e"),
+        description: UI.val(f, "description"),
+        amount, currency: "GBP", date: UI.val(f, "date"),
+        category: UI.val(f, "category"), type, paidBy,
+        supplier: UI.val(f, "supplier"), notes: UI.val(f, "notes"),
+        issueId: "", receipts,
+        splits: type === "shared" ? Store.equalSplits(paidBy, amount) : [],
+        createdBy: Auth.user().id
+      };
+      Store.data.expenses.unshift(next);
+      Store.log("create", "expense", next.id, next.description);
+      Store.save();
+      UI.closeModal();
+      UI.toast("Expense saved");
+      this.renderExpenses();
+    };
   },
 
   renderIdeas() {
@@ -927,7 +1114,7 @@ const App = {
     const blocks = [];
     if (q) {
       Store.data.documents.filter((d) => hit(d.title + d.body)).forEach((d) => blocks.push(["Document", d.title, "#house"]));
-      Store.data.restaurants.filter((r) => hit(r.name + r.town + r.notes)).forEach((r) => blocks.push(["Food", r.name, "#restaurants"]));
+      (Store.data.places || Store.data.restaurants || []).filter((r) => hit(r.name + r.town + (r.notes || "") + (r.kind || ""))).forEach((r) => blocks.push(["Place", r.name, "#guide"]));
       Store.data.contacts.filter((c) => hit(c.name + c.business + c.notes)).forEach((c) => blocks.push(["Contact", c.name, "#house"]));
       Store.data.maintenance.filter((m) => hit(m.title + m.description)).forEach((m) => blocks.push(["Issue", m.title, "#maintenance/" + m.id]));
       Store.data.ideas.filter((i) => hit(i.title + i.description)).forEach((i) => blocks.push(["Idea", i.title, "#ideas"]));
