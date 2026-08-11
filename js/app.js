@@ -11,9 +11,62 @@ const App = {
     this.bindChrome();
     this.renderPinPad();
     this.bindSignup();
+    this.bindSyncRefresh();
     if (Auth.restore()) this.showApp();
     else this.showLogin();
     window.addEventListener("hashchange", () => this.route());
+    await this.refreshSyncStatus();
+  },
+
+  bindSyncRefresh() {
+    if (this._syncBound) return;
+    this._syncBound = true;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.refreshFromRemote();
+    });
+    window.addEventListener("online", () => this.refreshFromRemote());
+    setInterval(() => {
+      if (document.visibilityState === "visible") this.refreshFromRemote();
+    }, 45000);
+  },
+
+  async refreshFromRemote() {
+    try {
+      const remote = await Store.pullRemote();
+      if (remote && !document.getElementById("app").hidden) {
+        if (this.view === "calendar") this.renderCalendar();
+        else if (this.view === "dashboard") this.renderDashboard();
+        else if (this.view === "settings") this.renderSettings();
+      }
+    } catch (_) { /* offline */ }
+    await this.refreshSyncStatus();
+  },
+
+  async refreshSyncStatus() {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    if (typeof FamilySync === "undefined") {
+      el.textContent = "";
+      return;
+    }
+    el.textContent = "Checking family save…";
+    try {
+      await FamilySync.init();
+      const remote = await FamilySync.pull();
+      if (!remote) {
+        el.textContent = FamilySync.lastError
+          ? "Phone sync unavailable right now. Open the site on the computer that made the PIN, then try again."
+          : "Could not reach family save yet.";
+        return;
+      }
+      const people = (remote.users || []).filter((u) => u && u.id && u.id !== "u-admin").length;
+      const stays = (remote.bookings || []).filter((b) => b && b.status !== "cancelled").length;
+      el.textContent = people || stays
+        ? "Family save connected · " + people + " people · " + stays + " stays"
+        : "Family save connected · waiting for the first PIN or stay from any device";
+    } catch (_) {
+      el.textContent = "Phone sync unavailable right now.";
+    }
   },
 
   bindChrome() {
@@ -55,6 +108,7 @@ const App = {
     this.showLoginPanels("pin");
     const pinsNav = document.getElementById("nav-family-pins");
     if (pinsNav) pinsNav.hidden = true;
+    this.refreshSyncStatus();
   },
 
   showApp() {
@@ -2115,6 +2169,8 @@ const App = {
     location.hash = "settings";
   }
 };
+
+window.App = App;
 
 document.addEventListener("DOMContentLoaded", () => {
   App.init().catch((err) => {

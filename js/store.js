@@ -258,7 +258,7 @@ const Store = {
     }
     this._remoteUsers = [];
     let remote = null;
-    if (window.FamilySync) {
+    if (typeof FamilySync !== "undefined") {
       await FamilySync.init();
       remote = await FamilySync.pull();
       if (remote) {
@@ -335,13 +335,14 @@ const Store = {
   },
 
   async pullRemote() {
-    if (!window.FamilySync) return;
+    if (typeof FamilySync === "undefined") return null;
     const remote = await FamilySync.pull();
-    if (!remote) return;
+    if (!remote) return null;
     this._remoteUsers = remote.users || [];
     this.applyFamilySlice(remote, { applyRemoved: true });
     this.data.users = this.mergeUsers(this.data.users, this._remoteUsers, this.collectLocalUsers());
     this.persistUsers();
+    return remote;
   },
 
   queueRemotePush() {
@@ -352,7 +353,7 @@ const Store = {
   },
 
   async pushRemote() {
-    if (!window.FamilySync) return false;
+    if (typeof FamilySync === "undefined") return false;
     if (this._pushing) {
       this._pushAgain = true;
       return new Promise((resolve) => {
@@ -363,8 +364,11 @@ const Store = {
     let ok = false;
     try {
       ok = await this._pushRemoteOnce();
-    } catch (_) {
+    } catch (err) {
       ok = false;
+      if (window.FamilySync) {
+        FamilySync.lastError = "pushRemote " + String(err && err.message ? err.message : err);
+      }
     } finally {
       this._pushing = false;
       if (this._pushAgain) {
@@ -401,7 +405,9 @@ const Store = {
     if (ok) {
       this._remoteUsers = merged.users;
       this.data.users = this.mergeUsers(this.data.users, merged.users);
+      this.applyFamilySlice(merged, { applyRemoved: false });
       this.persistUsers();
+      this.writeLocalDraft();
     }
     return ok;
   },
@@ -840,3 +846,5 @@ const Store = {
     this.clearDraft();
   }
 };
+
+window.Store = Store;
