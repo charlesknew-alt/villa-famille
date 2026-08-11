@@ -3,5 +3,5 @@
   "branch": "main",
   "jsonBlobId": "019ff15c-4188-76c2-b7ee-8fb7c20316e8",
   "jsonBlobUrl": "https://jsonblob.com/api/jsonBlob/019ff15c-4188-76c2-b7ee-8fb7c20316e8",
-  "note": "Family users/bookings auto-save here (browser GET+PUT). FamilySync must be on window \u2014 const alone is invisible to window.FamilySync checks. pinDisplay must stay on each user."
+  "note": "Family users/bookings auto-save here (browser GET+PUT). FamilySync must be assigned to window — a top-level const is not window.FamilySync. pinDisplay must stay on each user."
 }
