@@ -58,10 +58,11 @@ const Store = {
 
   familyBranch(user) {
     if (!user) return "";
+    if (user.role === "admin") return "";
     const listed = this.familyBranches();
     if (user.familyBranch && listed.indexOf(user.familyBranch) >= 0) return user.familyBranch;
     const hay = ((user.lastName || "") + " " + (user.name || "")).toLowerCase();
-    if (/\bnews?\b/.test(hay)) return "News";
+    if (/\bnews\b/.test(hay)) return "News";
     if (/\bdossetters?\b/.test(hay)) return "Dossetters";
     if (/\bsearles?\b/.test(hay)) return "Searles";
     if (/\bjones\b/.test(hay)) return "Jones";

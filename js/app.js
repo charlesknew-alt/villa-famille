@@ -1897,9 +1897,12 @@ const App = {
     this.bindPinAdmin();
     this.bindSchoolSettings();
     this.afterRender();
-    if (admin && this.params.id === "pins") {
-      const pins = document.getElementById("family-pins");
-      if (pins) setTimeout(() => pins.scrollIntoView({ block: "start", behavior: "smooth" }), 40);
+    if (admin && this._pinScroll) {
+      const go = this._pinScroll;
+      this._pinScroll = "";
+      this.scrollToPin(go);
+    } else if (admin && this.params.id === "pins") {
+      this.scrollToPin("family-pins");
     }
   },
 
@@ -1955,7 +1958,7 @@ const App = {
         u.updatedAt = new Date().toISOString();
         Store.rememberUser(u);
         Store.save();
-        this.renderSettings();
+        UI.toast("Saved");
       };
     });
     document.querySelectorAll("[data-delh]").forEach((b) => b.onclick = () => {
@@ -1988,40 +1991,57 @@ const App = {
       "<p>Verify code: <b>302011</b></p></div>";
   },
 
-  pinPersonRow(u, me) {
+  pinPersonRow(u, me, opts) {
     const pin = /^\d{4}$/.test(u.pinDisplay || "") ? u.pinDisplay : "PIN not saved — remove and add again";
     const branch = Store.familyBranch(u);
-    return "<div class='row pin-admin-row'><div><b>" + UI.esc(u.name) + "</b>" +
+    const hideFamily = opts && opts.hideFamily;
+    return "<div class='row pin-admin-row' id='pin-row-" + UI.esc(u.id) + "'><div><b>" + UI.esc(u.name) + "</b>" +
       '<div class="pin-plain">' + UI.esc(pin) + "</div>" +
       "<div class='muted'>" + UI.esc(u.role) + "</div>" +
-      "<label class='field' style='margin:8px 0 0'><span>Family</span><select data-branch='" + u.id + "'>" +
-      this.familyOptions(branch) + "</select></label>" +
-      "<label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
-      this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
+      (hideFamily ? "" : "<label class='field' style='margin:8px 0 0'><span>Family</span><select data-branch='" + u.id + "'>" +
+      this.familyOptions(branch) + "</select></label>") +
+      (hideFamily ? "" : "<label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
+      this.schoolOptions(u.schoolId || "") + "</select></label>") +
+      "</div>" +
       "<span class='actions'>" +
       (u.id !== me.id ? "<button class='btn primary' type='button' data-openas='" + u.id + "'>Open as them</button>" : "") +
       (u.id !== me.id ? "<button class='text-btn' type='button' data-delu='" + u.id + "'>Remove</button>" : "") +
       "</span></div>";
   },
 
+  scrollToPin(target) {
+    if (!target) return;
+    const el = document.getElementById(target);
+    if (el) setTimeout(() => el.scrollIntoView({ block: "start", behavior: "smooth" }), 40);
+  },
+
   pinAdmin() {
     const me = Auth.user();
     const people = Store.allUsers().slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    const admins = people.filter((u) => u.role === "admin");
+    const familyPeople = people.filter((u) => u.role !== "admin");
+    const jump = '<div class="pin-jump"><span class="muted">Jump to</span>' +
+      Store.familyBranches().map((branch) => '<button class="btn" type="button" data-jump="' + UI.esc(branch) + '">' + UI.esc(branch) + "</button>").join("") +
+      "</div>";
     const groups = Store.familyBranches().map((branch) => {
-      const members = people.filter((u) => Store.familyBranch(u) === branch);
-      return '<h3 class="pin-family-head">' + UI.esc(branch) + "</h3>" +
-        (members.length ? members.map((u) => this.pinPersonRow(u, me)).join("") : "<p class='muted'>Nobody in this family yet.</p>");
+      const members = familyPeople.filter((u) => Store.familyBranch(u) === branch);
+      return '<section class="pin-family-block" id="pin-family-' + UI.esc(branch) + '"><h3 class="pin-family-head">' + UI.esc(branch) + "</h3>" +
+        (members.length ? members.map((u) => this.pinPersonRow(u, me)).join("") : "<p class='muted'>Nobody in this family yet.</p>") +
+        "</section>";
     }).join("");
-    const other = people.filter((u) => !Store.familyBranch(u));
+    const other = familyPeople.filter((u) => !Store.familyBranch(u));
     return '<div class="card pin-admin-card" id="family-pins">' +
       '<h2 class="pin-admin-title">Family PINs</h2>' +
       '<p class="pin-admin-sub">Everyone’s name and 4-digit PIN</p>' +
-      '<p class="muted">Open as them to edit their bookings. Same name cannot be added twice.</p>' +
+      '<p class="muted">Tap a family name to jump to that list. House Admin stays at the top — it is not part of News or Khanna.</p>' +
+      (admins.length ? '<h3 class="pin-family-head">House admin</h3>' + admins.map((u) => this.pinPersonRow(u, me, { hideFamily: true })).join("") : "") +
+      jump +
       groups +
-      (other.length ? '<h3 class="pin-family-head">Other</h3>' + other.map((u) => this.pinPersonRow(u, me)).join("") : "") +
+      (other.length ? '<section class="pin-family-block"><h3 class="pin-family-head">Other</h3>' + other.map((u) => this.pinPersonRow(u, me)).join("") + "</section>" : "") +
+      '<div class="pin-add-box"><h3 class="pin-family-head">Add a person</h3>' +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
       '<label class="field"><span>Which part of the family?</span><select name="familyBranch" required>' + this.familyOptions("") + "</select></label>" +
-      '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn">Add person</button></form></div>';
+      '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn primary">Add person</button></form></div></div>';
   },
 
   bindPinAdmin() {
@@ -2044,8 +2064,15 @@ const App = {
       Store.save();
       await Store.pushRemote();
       UI.toast("Person added");
+      this._pinScroll = "pin-family-" + familyBranch;
       this.renderSettings();
     };
+    document.querySelectorAll("[data-jump]").forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        this.scrollToPin("pin-family-" + btn.getAttribute("data-jump"));
+      };
+    });
     document.querySelectorAll("[data-branch]").forEach((sel) => {
       sel.onchange = () => {
         const u = Store.allUsers().find((x) => x.id === sel.getAttribute("data-branch"));
@@ -2054,6 +2081,7 @@ const App = {
         u.updatedAt = new Date().toISOString();
         Store.rememberUser(u);
         Store.save();
+        this._pinScroll = sel.value ? "pin-family-" + sel.value : "family-pins";
         this.renderSettings();
       };
     });

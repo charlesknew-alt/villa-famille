@@ -160,6 +160,20 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
   border-top: 1px solid var(--line);
 }
 .pin-family-head:first-of-type { border-top: 0; margin-top: 12px; }
+.pin-family-block { scroll-margin-top: 80px; }
+.pin-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+.pin-add-box {
+  margin-top: 28px;
+  padding: 16px 0 0;
+  border-top: 2px solid var(--olive);
+}
+.pin-add-box .pin-family-head { border-top: 0; margin-top: 0; }
 .signup-fields { margin-top: 18px; }
 .signup-fields .field input {
   min-height: 56px;
