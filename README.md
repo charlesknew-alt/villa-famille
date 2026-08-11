@@ -43,10 +43,10 @@ Admin can also **Add person** in Settings. Same name rule. Login uses a **SHA-25
 
 - **Calendar** — the main feature. Green = free, red = booked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. After a stay, the next login asks for a short house review. Busy / packed reviews later warn on the calendar and new-stay form.
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
-- **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
+- **House** — emergency numbers, shut-offs, inventory, departure checklist, expenses, documents, contractors.
 - **Travel** — Skyscanner search is built into the Travel page (and the booking form). Pick dates, search live prices on this site, then compare BA / easyJet / others. Airline buttons are still there if you want the carrier site.
 - **School holidays** — Seaford College, King Edward’s Woking and Greenfield Woking families have priority in typical 2025–2027 independent-school holidays. Admin can edit the dates in Settings.
-- **Local guide** — real well-known places near La Croix-Valmer and Gigaro. Stars, comments, photos, replies once the family adds them.
+- **Local guide** — the family adds restaurants, beaches, shops and days out. A restaurant needs a phone number. Stars, comments, photos, replies.
 - **Expenses** — GBP, who paid, receipts, personal vs shared. Shared bills split equally across the owners list. Settle up when reimbursed.
 - Ideas, search, dark mode, activity log.
 
@@ -71,7 +71,7 @@ All house data is in the repo:
 2. Edit rows. Keep the header names.
 3. For a full restore, it is simpler to edit `data/house.json` or use **Restore JSON** in Settings.
 
-Flight prices later: keep using `lib/flights.js` → `getFares()`. Today that only returns live numbers if you add an API key in Settings. The Travel buttons always deep-link to the airlines.
+Travel buttons deep-link to the airlines and Skyscanner. `lib/flights.js` can still look up fares if a key is set in the browser; there is no Settings form for that.
 
 ## House notes
 
