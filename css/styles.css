@@ -359,6 +359,15 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
   color: var(--muted);
   margin: 0 0 6px;
 }
+.sky-card { margin-bottom: 18px; }
+.sky-widget-wrap {
+  min-height: 220px;
+  margin: 12px 0 4px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+.sky-widget-wrap iframe,
+.sky-widget-wrap [data-skyscanner-widget] { width: 100% !important; }
 .live-links {
   display: grid;
   grid-template-columns: 1fr 1fr;
