@@ -292,6 +292,107 @@ const Store = {
       .sort((a, b) => a.arrival.localeCompare(b.arrival));
   },
 
+  monthName(n) {
+    return ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"][Number(n) - 1] || "";
+  },
+
+  weekOfMonth(iso) {
+    const day = Number(String(iso || "").slice(8, 10));
+    if (!day) return 1;
+    return Math.min(5, Math.ceil(day / 7));
+  },
+
+  weekLabel(week) {
+    if (week <= 1) return "early";
+    if (week >= 4) return "late";
+    return "mid";
+  },
+
+  stayBelongsTo(booking, user) {
+    if (!booking || !user) return false;
+    if (booking.createdBy && booking.createdBy === user.id) return true;
+    const guests = String(booking.guests || "").toLowerCase();
+    if (!guests) return false;
+    const name = String(user.name || "").toLowerCase().trim();
+    const first = String(user.firstName || "").toLowerCase().trim();
+    const last = String(user.lastName || "").toLowerCase().trim();
+    if (name && guests.indexOf(name) >= 0) return true;
+    if (first && last && guests.indexOf(first) >= 0 && guests.indexOf(last) >= 0) return true;
+    return false;
+  },
+
+  pendingStayReview(user) {
+    const t = UI.today();
+    return (this.data.bookings || [])
+      .filter((b) => b.status === "booked" && b.departure < t && !b.stayReview && this.stayBelongsTo(b, user))
+      .sort((a, b) => a.departure.localeCompare(b.departure))[0] || null;
+  },
+
+  stayReviews() {
+    return (this.data.bookings || []).map((b) => b.stayReview).filter(Boolean);
+  },
+
+  weeksInRange(arrival, departure) {
+    const out = [];
+    const seen = {};
+    if (!arrival || !departure) return out;
+    let d = arrival;
+    let guard = 0;
+    while (d < departure && guard < 400) {
+      const month = Number(d.slice(5, 7));
+      const week = this.weekOfMonth(d);
+      const key = month + "-" + week;
+      if (!seen[key]) {
+        seen[key] = true;
+        out.push({ month, week, key });
+      }
+      d = UI.addDays(d, 1);
+      guard += 1;
+    }
+    return out;
+  },
+
+  busyReviewsFor(arrival, departure) {
+    const slots = this.weeksInRange(arrival, departure);
+    if (!slots.length) return [];
+    return this.stayReviews().filter((r) => {
+      if (r.busy !== "busy" && r.busy !== "packed") return false;
+      const month = Number(r.month);
+      const week = Number(r.weekOfMonth || 0);
+      return slots.some((s) => s.month === month && (!week || s.week === week || Math.abs(s.week - week) <= 1));
+    });
+  },
+
+  busyHint(arrival, departure) {
+    const hits = this.busyReviewsFor(arrival, departure);
+    if (!hits.length) return "";
+    const years = [];
+    const months = [];
+    const weeks = [];
+    hits.forEach((r) => {
+      if (years.indexOf(r.year) < 0) years.push(r.year);
+      if (months.indexOf(Number(r.month)) < 0) months.push(Number(r.month));
+      if (r.weekOfMonth && weeks.indexOf(Number(r.weekOfMonth)) < 0) weeks.push(Number(r.weekOfMonth));
+    });
+    const generic = "This time of year is usually busy (from family reviews). Book restaurants and popular places ahead.";
+    if (years.length < 2 || months.length !== 1) return generic;
+    const month = this.monthName(months[0]);
+    if (!month) return generic;
+    let when = month;
+    if (weeks.length === 1) when = this.weekLabel(weeks[0]) + "-" + month;
+    else if (weeks.length && weeks.every((w) => w === 2 || w === 3)) when = "mid-" + month;
+    return "Usually busy in " + when + ".";
+  },
+
+  busyHintForMonth(ym) {
+    if (!ym) return "";
+    const start = String(ym).slice(0, 7) + "-01";
+    const d = new Date(start + "T12:00:00");
+    d.setMonth(d.getMonth() + 1);
+    return this.busyHint(start, d.toISOString().slice(0, 10));
+  },
+
   openIssues() {
     return (this.data.maintenance || []).filter((m) => m.status !== "completed");
   },

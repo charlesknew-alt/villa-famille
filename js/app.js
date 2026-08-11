@@ -45,6 +45,9 @@ const App = {
   showLogin() {
     document.getElementById("boot-screen").hidden = true;
     document.getElementById("app").hidden = true;
+    const review = document.getElementById("stay-review-screen");
+    if (review) { review.hidden = true; review.innerHTML = ""; }
+    this._stayReviewDraft = null;
     document.getElementById("login-screen").hidden = false;
     this.pin = "";
     this.drawDots();
@@ -59,6 +62,7 @@ const App = {
     const u = Auth.user();
     document.getElementById("who-chip").textContent = (Auth.isImpersonating() ? "As " : "") + u.name + " · " + u.role;
     this.syncSaveChip();
+    if (this.maybeStayReview()) return;
     this.route();
   },
 
@@ -233,6 +237,7 @@ const App = {
     const [view, ...rest] = raw.split("/");
     this.view = view || "dashboard";
     this.params = { id: rest[0] ? decodeURIComponent(rest[0]) : "", extra: rest.slice(1).join("/") };
+    if (this.maybeStayReview()) return;
     document.querySelectorAll("[data-nav]").forEach((a) => {
       a.classList.toggle("active", a.getAttribute("data-nav") === this.view ||
         (this.view === "search" && a.getAttribute("data-nav") === "dashboard"));
@@ -254,6 +259,127 @@ const App = {
       contacts: () => { this.houseTab = "people"; this.renderHouse(); }
     };
     (map[this.view] || map.dashboard)();
+  },
+
+  maybeStayReview() {
+    const screen = document.getElementById("stay-review-screen");
+    if (!screen || !Auth.user()) return false;
+    const stay = Store.pendingStayReview(Auth.user());
+    if (!stay) {
+      screen.hidden = true;
+      screen.innerHTML = "";
+      return false;
+    }
+    this.paintStayReview(stay);
+    return true;
+  },
+
+  paintStayReview(stay) {
+    const screen = document.getElementById("stay-review-screen");
+    if (!screen || !stay) return;
+    const draft = this._stayReviewDraft || { stars: 0, busy: "", bookingNeeded: "", notes: "", nextYear: "" };
+    this._stayReviewDraft = draft;
+    const choice = (name, value, label, wide) =>
+      '<button type="button" class="choice-btn' + (draft[name] === value ? " on" : "") +
+      '" data-rv="' + name + '" data-v="' + value + '">' + label + "</button>";
+    screen.hidden = false;
+    screen.innerHTML = '<div class="stay-review-card"><p class="eyebrow">After your stay</p>' +
+      "<h2>How was the house?</h2>" +
+      "<p class='login-sub'>You stayed " + UI.fmt(stay.arrival) + " – " + UI.fmt(stay.departure) +
+      ". A short review helps next year’s group.</p>" +
+      '<p id="stay-review-err" class="pin-error" hidden></p>' +
+      '<form id="stay-review-form">' +
+      "<label class='field'><span>1. How was the house?</span></label>" +
+      '<div class="choice-grid">' +
+        [1, 2, 3, 4, 5].map((n) => choice("stars", String(n), "★ " + n)).join("") +
+      "</div>" +
+      "<label class='field'><span>2. How busy was the area?</span></label>" +
+      '<div class="choice-grid wide">' +
+        choice("busy", "quiet", "Quiet") + choice("busy", "normal", "Normal") +
+        choice("busy", "busy", "Busy") + choice("busy", "packed", "Packed") +
+      "</div>" +
+      "<label class='field'><span>3. Did you need to book restaurants / beaches / places in advance?</span></label>" +
+      '<div class="choice-grid wide">' +
+        choice("bookingNeeded", "yes", "Yes") + choice("bookingNeeded", "no", "No") +
+        choice("bookingNeeded", "some", "Some") +
+      "</div>" +
+      '<label class="field"><span>4. Short comment (optional)</span>' +
+      '<textarea name="notes" rows="3" placeholder="Anything simple">' + UI.esc(draft.notes) + "</textarea></label>" +
+      '<label class="field"><span>5. Anything you’d tell next year’s group for these dates?</span>' +
+      '<textarea name="nextYear" rows="3" placeholder="Book that restaurant, avoid that weekend…">' +
+      UI.esc(draft.nextYear) + "</textarea></label>" +
+      '<button class="btn primary create-pin-btn" type="submit">Save review</button></form></div>';
+    screen.querySelectorAll("[data-rv]").forEach((btn) => {
+      btn.onclick = () => {
+        const form = document.getElementById("stay-review-form");
+        if (form) {
+          this._stayReviewDraft.notes = UI.val(form, "notes");
+          this._stayReviewDraft.nextYear = UI.val(form, "nextYear");
+        }
+        const key = btn.getAttribute("data-rv");
+        let val = btn.getAttribute("data-v");
+        if (key === "stars") val = Number(val);
+        this._stayReviewDraft[key] = val;
+        this.paintStayReview(stay);
+      };
+    });
+    const form = document.getElementById("stay-review-form");
+    if (form) form.onsubmit = (e) => {
+      e.preventDefault();
+      this.submitStayReview(stay, form);
+    };
+  },
+
+  submitStayReview(stay, form) {
+    const draft = this._stayReviewDraft || {};
+    const err = document.getElementById("stay-review-err");
+    const showErr = (msg) => {
+      if (err) { err.hidden = false; err.textContent = msg; }
+      UI.toast(msg);
+    };
+    const stars = Number(draft.stars || 0);
+    if (stars < 1 || stars > 5) return showErr("Please tap how many stars.");
+    if (!draft.busy) return showErr("Please say how busy the area was.");
+    if (!draft.bookingNeeded) return showErr("Please say if you needed to book ahead.");
+    const user = Auth.user();
+    const arrival = stay.arrival;
+    stay.stayReview = {
+      reviewerId: user ? user.id : "",
+      reviewer: user ? user.name : "",
+      arrival: stay.arrival,
+      departure: stay.departure,
+      year: Number(String(arrival).slice(0, 4)),
+      month: Number(String(arrival).slice(5, 7)),
+      weekOfMonth: Store.weekOfMonth(arrival),
+      busy: draft.busy,
+      bookingNeeded: draft.bookingNeeded,
+      stars,
+      notes: UI.val(form, "notes"),
+      nextYear: UI.val(form, "nextYear"),
+      reviewedAt: new Date().toISOString()
+    };
+    this._stayReviewDraft = null;
+    Store.log("review", "booking", stay.id, (user ? user.name : "Someone") + " reviewed their stay");
+    Store.save();
+    UI.toast("Thank you — review saved");
+    Store.tryPushIfAuthed().catch(() => {});
+    if (this.maybeStayReview()) return;
+    this.route();
+  },
+
+  busyBannerHtml(arrival, departure) {
+    const msg = Store.busyHint(arrival, departure);
+    if (!msg) return "";
+    return '<div class="holiday-banner busy">' + UI.esc(msg) + "</div>";
+  },
+
+  dashBusyNote() {
+    const next = Store.upcomingBookings()[0];
+    const msg = next
+      ? Store.busyHint(next.arrival, next.departure)
+      : Store.busyHintForMonth(UI.today().slice(0, 7));
+    if (!msg) return "";
+    return '<div class="holiday-banner busy"><b>Coming dates look busy.</b> ' + UI.esc(msg) + "</div>";
   },
 
   dirtyBar() {
@@ -310,7 +436,7 @@ const App = {
     const view = document.getElementById("view");
     view.innerHTML = this.head("Welcome home", d.house.place + " · " + (d.house.region || ""),
       '<a class="btn primary" href="#calendar">New stay</a><a class="btn" href="#maintenance">Report issue</a>') +
-      this.holidayDashNote() +
+      this.holidayDashNote() + this.dashBusyNote() +
       '<div class="grid stats">' +
         this.stat(here.length ? here[0].guests.split(",")[0] : "Empty", "Who is here") +
         this.stat(next.length, "Upcoming stays") +
@@ -461,6 +587,7 @@ const App = {
     view.innerHTML = this.head("Calendar", "Green free · Red booked · Gold flag = school holiday",
       (Auth.canEdit() ? '<button class="btn primary" id="add-stay" type="button">Add stay</button>' : "")) +
       this.holidayDashNote() +
+      '<div id="cal-busy">' + this.calBusyBanner() + "</div>" +
       '<div class="legend"><span><i class="swatch available"></i>Available</span><span><i class="swatch booked"></i>Booked</span><span><i class="swatch holiday"></i>School holiday</span></div>' +
       '<div class="filters"><div class="seg">' +
         ["month","week","list"].map((m) => '<button type="button" data-mode="' + m + '" class="' + (mode === m ? "on" : "") + '">' + m[0].toUpperCase() + m.slice(1) + "</button>").join("") +
@@ -482,6 +609,8 @@ const App = {
     else d.setMonth(d.getMonth() + dir);
     this.cal.cursor = d.toISOString().slice(0, 10);
     this.paintCal();
+    const busy = document.getElementById("cal-busy");
+    if (busy) busy.innerHTML = this.calBusyBanner();
   },
 
   paintCal() {
@@ -554,6 +683,21 @@ const App = {
     return block("Coming up", future) + block("Past", past);
   },
 
+  calBusyBanner() {
+    if (this.cal.mode === "week") {
+      const d = new Date((this.cal.cursor || UI.today()) + "T12:00:00");
+      const dow = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - dow);
+      const start = d.toISOString().slice(0, 10);
+      d.setDate(d.getDate() + 7);
+      return this.busyBannerHtml(start, d.toISOString().slice(0, 10));
+    }
+    return this.busyBannerHtml(
+      (this.cal.cursor || UI.today()).slice(0, 7) + "-01",
+      UI.addDays((this.cal.cursor || UI.today()).slice(0, 7) + "-28", 8)
+    );
+  },
+
   onDay(iso) {
     const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
     if (stays.length === 1) return this.openBooking(stays[0].id);
@@ -596,7 +740,7 @@ const App = {
       '<form id="bk-form">' +
         '<div class="field-row"><label class="field"><span>Arrival</span><input name="arrival" type="date" value="' + UI.esc(b.arrival || "") + '" required></label>' +
         '<label class="field"><span>Departure</span><input name="departure" type="date" value="' + UI.esc(b.departure || "") + '" required></label></div>' +
-        '<div id="bk-hol">' + this.holidayBannerHtml(b.arrival, b.departure) + "</div>" +
+        '<div id="bk-hol">' + this.holidayBannerHtml(b.arrival, b.departure) + this.busyBannerHtml(b.arrival, b.departure) + "</div>" +
         this.costBoxHtml(null, b.arrival, b.departure, b.guestCount) +
         '<label class="field"><span>Who is staying</span><input name="guests" value="' + UI.esc(b.guests || "") + '" placeholder="Names"></label>' +
         '<label class="field"><span>Guest count</span><input name="guestCount" type="number" min="0" value="' + (b.guestCount || 0) + '"></label>' +
@@ -615,7 +759,7 @@ const App = {
       const arrival = UI.val(form, "arrival");
       const departure = UI.val(form, "departure");
       const guests = UI.val(form, "guestCount");
-      document.getElementById("bk-hol").innerHTML = this.holidayBannerHtml(arrival, departure);
+      document.getElementById("bk-hol").innerHTML = this.holidayBannerHtml(arrival, departure) + this.busyBannerHtml(arrival, departure);
       document.getElementById("bk-ack-slot").innerHTML = this.holidayAckHtml(arrival, departure, "booked");
       paintCost(null, arrival, departure, guests);
       Flights.withTimeout(Flights.estimateReturn(arrival, departure, guests), 3000).then((est) => {

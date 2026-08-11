@@ -41,7 +41,7 @@ Admin can also **Add person** in Settings. Same name rule. Login uses a **SHA-25
 
 ## What is in the app
 
-- **Calendar** — the main feature. Green = free, red = booked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house. The booking form opens easyJet / BA / Google Flights / Skyscanner for those exact dates.
+- **Calendar** — the main feature. Green = free, red = booked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. After a stay, the next login asks for a short house review. Busy / packed reviews later warn on the calendar and new-stay form.
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
 - **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
 - **Travel** — Skyscanner search is built into the Travel page (and the booking form). Pick dates, search live prices on this site, then compare BA / easyJet / others. Airline buttons are still there if you want the carrier site.

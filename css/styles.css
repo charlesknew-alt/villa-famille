@@ -349,7 +349,9 @@ a.place-card {
   font-size: 16px;
 }
 .holiday-banner.soft { font-weight: 600; }
+.holiday-banner.busy { background: #f3d7cc; color: #8a3a28; }
 [data-theme="dark"] .holiday-banner { background: #3a3220; color: #f0d9a0; }
+[data-theme="dark"] .holiday-banner.busy { background: #4a3228; color: #f0d4c4; }
 .cost-box {
   background: var(--olive-soft);
   border-radius: 14px;
@@ -513,4 +515,49 @@ a.place-card {
   .cal-day { min-height: 64px; }
   .highlights { grid-template-columns: 1fr; }
   .live-links { grid-template-columns: 1fr; }
+}
+
+.stay-review-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: auto;
+  align-content: start;
+}
+.stay-review-card {
+  width: min(520px, 100%);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 28px 24px 24px;
+  box-shadow: var(--shadow);
+  margin: 24px auto;
+}
+.stay-review-card h2 { font-size: 28px; }
+.stay-review-card .login-sub { max-width: none; margin-bottom: 18px; }
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 10px;
+  margin: 8px 0 18px;
+}
+.choice-grid.wide { grid-template-columns: 1fr 1fr; }
+.choice-btn {
+  min-height: 64px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.choice-btn.on, .choice-btn:focus-visible {
+  border-color: var(--olive);
+  background: var(--olive-soft);
+  color: var(--olive-2);
+}
+.stay-review-card textarea {
+  min-height: 88px;
+  font-size: 18px;
+  border-radius: 14px;
 }
