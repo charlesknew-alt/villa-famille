@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>The Family House</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect fill='%234f5d3a' width='64' height='64' rx='12'/%3E%3Cpath fill='%23f6f0e6' d='M12 34 L32 16 L52 34 V52 H12Z'/%3E%3Crect fill='%23c25b3c' x='28' y='38' width='8' height='14'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/styles.css?v=20260811e" />
+  <link rel="stylesheet" href="css/styles.css?v=20260811g" />
 </head>
 <body>
   <div id="boot-screen" class="boot-screen">
@@ -46,16 +46,27 @@
         <p class="demo-pins">New here? Create your PIN to join the house.</p>
 
         <button type="button" class="btn primary create-pin-btn" id="show-signup-btn">Create your PIN</button>
-        <p class="how-runs">This file is the house — open it in a browser. The GitHub page is only the code locker, not a live website. The calendar lives in <b>data/house.json</b>. New bookings first save as a draft in this browser; then download that file and put it back on GitHub so the family sees the same dates.</p>
+        <p class="how-runs">Enter your 4-digit PIN to come in. Your dates and PIN save on their own.</p>
       </div>
 
       <div id="login-signup-panel" hidden>
         <h2>Create your PIN</h2>
-        <p class="login-sub">Name, surname, a 4-digit PIN, and the house code you were given.</p>
+        <p class="login-sub">Name, surname, which part of the family, a 4-digit PIN, and the house code you were given.</p>
         <p id="signup-error" class="pin-error" hidden></p>
         <form id="signup-form" class="signup-fields">
           <label class="field"><span>Name</span><input name="firstName" autocomplete="given-name" required></label>
           <label class="field"><span>Surname</span><input name="lastName" autocomplete="family-name" required></label>
+          <fieldset class="field family-fieldset">
+            <legend>Which part of the family?</legend>
+            <input type="hidden" name="familyBranch" id="signup-family" value="">
+            <div class="family-pick" id="signup-family-pick">
+              <button type="button" class="choice-btn" data-family="Dossetters">Dossetters</button>
+              <button type="button" class="choice-btn" data-family="News">News</button>
+              <button type="button" class="choice-btn" data-family="Searles">Searles</button>
+              <button type="button" class="choice-btn" data-family="Jones">Jones</button>
+              <button type="button" class="choice-btn" data-family="Khanna">Khanna</button>
+            </div>
+          </fieldset>
           <label class="field"><span>4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required></label>
           <label class="field"><span>House code</span><input name="houseCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required></label>
           <button class="btn primary create-pin-btn" type="submit">Create PIN</button>
@@ -110,7 +121,7 @@
           <a href="#settings/pins" data-nav="pins" id="nav-family-pins" hidden>Family PINs</a>
           <a href="#settings" data-nav="settings">Settings</a>
         </nav>
-        <p class="nav-note">Calendar and bookings live in data/house.json on GitHub. This browser only holds a draft until you save that file back.</p>
+        <p class="nav-note">Changes save on their own. You do not need GitHub.</p>
       </aside>
       <main id="view" class="view"></main>
     </div>
@@ -121,13 +132,14 @@
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
 
-  <script src="data/house-data.js?v=20260811e"></script>
-  <script src="data/fares-data.js?v=20260811e"></script>
-  <script src="js/crypto.js?v=20260811e"></script>
-  <script src="js/store.js?v=20260811e"></script>
-  <script src="js/auth.js?v=20260811e"></script>
-  <script src="js/ui.js?v=20260811e"></script>
-  <script src="lib/flights.js?v=20260811e"></script>
-  <script src="js/app.js?v=20260811e"></script>
+  <script src="data/house-data.js?v=20260811g"></script>
+  <script src="data/fares-data.js?v=20260811g"></script>
+  <script src="js/crypto.js?v=20260811g"></script>
+  <script src="lib/sync.js?v=20260811g"></script>
+  <script src="js/store.js?v=20260811g"></script>
+  <script src="js/auth.js?v=20260811g"></script>
+  <script src="js/ui.js?v=20260811g"></script>
+  <script src="lib/flights.js?v=20260811g"></script>
+  <script src="js/app.js?v=20260811g"></script>
 </body>
 </html>

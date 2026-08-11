@@ -39,7 +39,7 @@ const App = {
 
   syncSaveChip() {
     const btn = document.getElementById("save-banner-btn");
-    if (btn) btn.hidden = !Store.dirty;
+    if (btn) btn.hidden = !Auth.isAdmin() || !Store.dirty;
   },
 
   showLogin() {
@@ -169,10 +169,34 @@ const App = {
     document.querySelectorAll("[data-login-back]").forEach((b) => {
       b.onclick = () => this.showLoginPanels("pin");
     });
+    this.bindFamilyPick();
     if (form) form.onsubmit = (e) => {
       e.preventDefault();
       this.submitSignup(form);
     };
+  },
+
+  bindFamilyPick() {
+    const hidden = document.getElementById("signup-family");
+    document.querySelectorAll("#signup-family-pick [data-family]").forEach((btn) => {
+      btn.onclick = () => {
+        if (hidden) hidden.value = btn.getAttribute("data-family") || "";
+        document.querySelectorAll("#signup-family-pick [data-family]").forEach((b) => {
+          b.classList.toggle("on", b === btn);
+        });
+      };
+    });
+  },
+
+  familyOptions(selected) {
+    return '<option value="">Which part of the family?</option>' +
+      Store.familyBranches().map((name) => "<option value='" + name + "'" + (selected === name ? " selected" : "") + ">" +
+        name + "</option>").join("");
+  },
+
+  familyLine(booking) {
+    const branch = Store.stayFamily(booking);
+    return branch ? branch + " family" : "";
   },
 
   normName(first, last) {
@@ -186,7 +210,7 @@ const App = {
 
   nameTaken(first, last) {
     const key = this.normName(first, last);
-    return (Store.data.users || []).some((u) => this.personNameKey(u) === key);
+    return Store.allUsers().some((u) => Store.personNameKey(u) === key);
   },
 
   async submitSignup(form) {
@@ -203,6 +227,8 @@ const App = {
     if (btn) btn.disabled = true;
     try {
       if (!first || !last) return showErr("Please enter your name and surname.");
+      const familyBranch = UI.val(form, "familyBranch");
+      if (Store.familyBranches().indexOf(familyBranch) < 0) return showErr("Please choose which part of the family.");
       if (!/^\d{4}$/.test(pin)) return showErr("PIN must be 4 digits.");
       if (!(await Store.checkHouseCode(houseCode))) return showErr("That house code is not right.");
       if (this.nameTaken(first, last)) return showErr("That name is already registered.");
@@ -213,22 +239,24 @@ const App = {
         firstName: first,
         lastName: last,
         name: first + " " + last,
+        familyBranch,
         role: "family",
         pinSalt: salt,
         pinHash: await CryptoUtil.hashPin(pin, salt),
         pinDisplay: pin,
         createdAt: now,
+        updatedAt: now,
         createdBy: "signup"
       };
-      Store.data.users.push(person);
+      Store.rememberUser(person);
       Store.addOwner(person);
       Auth.setSession(person);
       Store.log("create", "user", person.id, person.name + " created a PIN");
       Store.save();
+      await Store.pushRemote();
       form.reset();
       this.showApp();
       UI.toast("Welcome, " + person.name);
-      Store.tryPushIfAuthed().catch(() => {});
     } catch (ex) {
       showErr((ex && ex.message) ? ex.message : "Could not create your PIN. Please try again.");
     } finally {
@@ -391,8 +419,7 @@ const App = {
   },
 
   dirtyBar() {
-    if (!Store.dirty) return "";
-    return '<div class="dirty-bar"><span>You have unsaved changes. Download the data files and put them back in the GitHub repo (or save with a token in Settings).</span><span class="actions"><button class="btn primary" type="button" id="bar-save">Save</button></span></div>';
+    return "";
   },
 
   afterRender() {
@@ -413,7 +440,7 @@ const App = {
   },
 
   openAsUser(id) {
-    const person = (Store.data.users || []).find((u) => u.id === id);
+    const person = Store.allUsers().find((u) => u.id === id);
     if (!person) return UI.toast("That person is not here");
     if (!Auth.openAs(person)) return UI.toast("Only admin can do that");
     this.showApp();
@@ -433,6 +460,75 @@ const App = {
       '</p></div><div class="actions">' + (actions || "") + "</div></div>";
   },
 
+  myTripsHtml() {
+    const stays = Store.myUpcomingStays(Auth.user());
+    let body;
+    if (!stays.length) {
+      body = "<p class='empty-trips'>You have no dates booked yet.</p>" +
+        (Auth.canEdit() ? '<button type="button" class="btn primary trip-open" id="dash-add-stay">Add a stay</button>' : "");
+    } else {
+      body = stays.map((b) => {
+        const nights = Store.nightsBetween(b.arrival, b.departure);
+        const who = [];
+        if (b.guestCount) who.push(b.guestCount + " guest" + (b.guestCount === 1 ? "" : "s"));
+        if (b.guests) who.push(b.guests);
+        const fam = this.familyLine(b);
+        if (fam) who.push(fam);
+        return '<div class="trip-card">' +
+          '<p class="trip-dates">' + UI.esc(UI.fmt(b.arrival)) + " – " + UI.esc(UI.fmt(b.departure)) + "</p>" +
+          "<p class='trip-meta'>" + nights + " night" + (nights === 1 ? "" : "s") +
+          (who.length ? " · " + UI.esc(who.join(" · ")) : "") + "</p>" +
+          '<a class="btn primary trip-open" href="#calendar/' + UI.esc(b.id) + '">Open this stay</a>' +
+          "</div>";
+      }).join("");
+    }
+    return '<div class="card my-trips"><h3>Your trips to France</h3>' + body + "</div>";
+  },
+
+  forYouHtml() {
+    const tips = this.forYouTips(Auth.user());
+    if (!tips.length) return "";
+    return '<div class="card for-you"><h3>For you</h3><ul>' +
+      tips.map((t) => "<li>" + t + "</li>").join("") + "</ul></div>";
+  },
+
+  forYouTips(user) {
+    const tips = [];
+    const next = Store.myUpcomingStays(user)[0];
+    const t = UI.today();
+    if (next) {
+      if (next.arrival <= t && t < next.departure) {
+        tips.push("You’re at the house until " + UI.esc(UI.fmt(next.departure)) + ".");
+      } else {
+        const days = Store.nightsBetween(t, next.arrival);
+        if (days <= 0) tips.push("You arrive today — " + UI.esc(UI.fmt(next.arrival)) + ".");
+        else if (days === 1) tips.push("You arrive tomorrow.");
+        else tips.push("Your next stay is in " + days + " days (" + UI.esc(UI.fmt(next.arrival)) + ").");
+      }
+      const busy = Store.busyHint(next.arrival, next.departure);
+      let saidRestaurants = false;
+      if (busy) {
+        let line = busy.replace(/\.$/, "");
+        if (/usually busy/i.test(line)) line += " — book restaurants before you go.";
+        tips.push(UI.esc(line));
+        saidRestaurants = /restaurant/i.test(line);
+      }
+      if (Store.holidaysOverlapping(next.arrival, next.departure).length) {
+        tips.push("School families have priority that week.");
+      }
+      tips.push('Compare flights on <a href="#travel">Travel</a> for these dates (BA / easyJet / Skyscanner).');
+      const month = Number(String(next.arrival).slice(5, 7));
+      if (!saidRestaurants && month >= 6 && month <= 9) {
+        tips.push('Summer is busy locally — book restaurants before you go. See the <a href="#guide">Local guide</a>.');
+      }
+    } else if (Auth.canEdit()) {
+      tips.push('No dates in the book yet. Add a stay when you know when you’re coming.');
+    } else {
+      tips.push("When a stay is booked in your name, tips for those dates will show up here.");
+    }
+    return tips.slice(0, 6);
+  },
+
   async renderDashboard() {
     const d = Store.data;
     const here = Store.currentStays();
@@ -441,41 +537,63 @@ const App = {
     const due = Store.dueRecurring();
     const recentFix = (d.maintenance || []).filter((m) => m.status === "completed").slice(0, 3);
     const docs = (d.documents || []).slice(0, 3);
+    const admin = Auth.isAdmin();
     const view = document.getElementById("view");
-    view.innerHTML = this.head("Welcome home", d.house.place + " · " + (d.house.region || ""),
-      '<a class="btn primary" href="#calendar">New stay</a><a class="btn" href="#maintenance">Report issue</a>') +
-      this.holidayDashNote() + this.dashBusyNote() +
-      (Auth.isAdmin() ? '<a class="card pin-jump-card" href="#settings/pins"><h3>Family PINs</h3><p>Everyone’s name and 4-digit PIN</p></a>' : "") +
-      '<div class="grid stats">' +
-        this.stat(here.length ? here[0].guests.split(",")[0] : "Empty", "Who is here") +
-        this.stat(next.length, "Upcoming stays") +
-        this.stat(open.length, "Open issues") +
-        this.stat(due.length, "Tasks due") +
-      "</div>" +
-      this.dashMoney() +
-      '<div class="grid two" style="margin-top:16px">' +
+    const weatherTravel = '<div class="grid two" style="margin-top:16px">' +
         '<div class="card"><h3>Who is at the house?</h3>' + this.whoBlock(here, next) + "</div>" +
         '<div class="card" id="weather-card"><h3>Weather · La Croix-Valmer</h3><p class="muted">Checking the sky…</p></div>' +
-      "</div>" +
-      '<div class="grid two" style="margin-top:16px">' +
-        '<div class="card"><h3>Open maintenance</h3>' + this.issueList(open.slice(0, 4)) +
-          '<p><a href="#maintenance">All issues</a></p></div>' +
-        '<div class="card"><h3>Due around the house</h3>' + this.recurringList(due.length ? due : d.recurring.slice(0, 3)) + "</div>" +
       "</div>" +
       '<div class="card" style="margin-top:16px"><h3>Travel</h3><p>London to Nice, Marseille or Toulon — then a short drive to La Croix-Valmer.</p>' +
         '<div class="quick-links"><a href="#travel">Compare flights</a></div>' +
         '<p class="muted" id="travel-hint">Most convenient is often Gatwick → Toulon (direct), then about an hour by car.</p></div>' +
-      '<div class="grid two" style="margin-top:16px">' +
-        '<div class="card"><h3>Recent repairs</h3>' + (recentFix.length ? recentFix.map((m) => "<div class='row'><span>" + UI.esc(m.title) + "</span><span class='chip done'>Done</span></div>").join("") : "<p class='empty'>None yet.</p>") + "</div>" +
-        '<div class="card"><h3>Documents</h3>' + docs.map((doc) => "<div class='row'><a href='#house'>" + UI.esc(doc.title) + "</a><span class='chip'>" + UI.esc(doc.category) + "</span></div>").join("") + "</div>" +
-      "</div>" +
       '<div class="card" style="margin-top:16px"><h3>Quick links</h3><div class="quick-links">' +
         '<a href="#calendar">Calendar</a><a href="#house">House guide</a>' +
         '<a href="#travel">Travel</a><a href="#guide">Local guide</a><a href="#expenses">Expenses</a></div></div>';
+    if (!admin) {
+      view.innerHTML = this.head("Welcome home", d.house.place + " · " + (d.house.region || ""),
+        (Auth.canEdit() ? '<a class="btn primary" href="#calendar">New stay</a>' : "") +
+        '<a class="btn" href="#maintenance">Report issue</a>') +
+        this.familyHomeNote() +
+        this.myTripsHtml() +
+        this.forYouHtml() +
+        this.holidayDashNote() + this.dashBusyNote() +
+        weatherTravel;
+    } else {
+      view.innerHTML = this.head("Welcome home", d.house.place + " · " + (d.house.region || ""),
+        '<a class="btn primary" href="#calendar">New stay</a><a class="btn" href="#maintenance">Report issue</a>') +
+        this.holidayDashNote() + this.dashBusyNote() +
+        '<a class="card pin-jump-card" href="#settings/pins"><h3>Family PINs</h3><p>Everyone’s name and 4-digit PIN</p></a>' +
+        this.forYouHtml() +
+        '<div class="grid stats">' +
+          this.stat(here.length ? here[0].guests.split(",")[0] : "Empty", "Who is here") +
+          this.stat(next.length, "Upcoming stays") +
+          this.stat(open.length, "Open issues") +
+          this.stat(due.length, "Tasks due") +
+        "</div>" +
+        this.dashMoney() +
+        '<div class="grid two" style="margin-top:16px">' +
+          '<div class="card"><h3>Open maintenance</h3>' + this.issueList(open.slice(0, 4)) +
+            '<p><a href="#maintenance">All issues</a></p></div>' +
+          '<div class="card"><h3>Due around the house</h3>' + this.recurringList(due.length ? due : d.recurring.slice(0, 3)) + "</div>" +
+        "</div>" +
+        weatherTravel +
+        '<div class="grid two" style="margin-top:16px">' +
+          '<div class="card"><h3>Recent repairs</h3>' + (recentFix.length ? recentFix.map((m) => "<div class='row'><span>" + UI.esc(m.title) + "</span><span class='chip done'>Done</span></div>").join("") : "<p class='empty'>None yet.</p>") + "</div>" +
+          '<div class="card"><h3>Documents</h3>' + docs.map((doc) => "<div class='row'><a href='#house'>" + UI.esc(doc.title) + "</a><span class='chip'>" + UI.esc(doc.category) + "</span></div>").join("") + "</div>" +
+        "</div>";
+    }
     this.afterRender();
-    document.querySelector('[href="#calendar"].btn') && (document.querySelector("a.btn.primary").onclick = (e) => {
-      e.preventDefault(); location.hash = "calendar"; setTimeout(() => this.bookingForm(), 50);
-    });
+    const newStay = document.querySelector(".page-head a.btn.primary");
+    if (newStay && newStay.getAttribute("href") === "#calendar") {
+      newStay.onclick = (e) => {
+        e.preventDefault(); location.hash = "calendar"; setTimeout(() => this.bookingForm(), 50);
+      };
+    }
+    const addStay = document.getElementById("dash-add-stay");
+    if (addStay) addStay.onclick = () => {
+      location.hash = "calendar";
+      setTimeout(() => this.bookingForm(), 50);
+    };
     const w = await UI.weather();
     if (this.view !== "dashboard") return;
     const box = document.getElementById("weather-card");
@@ -566,13 +684,25 @@ const App = {
       (s.recent[0] ? " · Latest: " + UI.esc(s.recent[0].description) + " " + Store.pound(s.recent[0].amount) : "") + "</p>";
   },
 
+  familyHomeNote() {
+    const branch = Store.familyBranch(Auth.user());
+    if (!branch) return "";
+    return '<div class="family-home-note">You’re in the ' + UI.esc(branch) + " family</div>";
+  },
+
   whoBlock(here, next) {
+    const whoLabel = (b) => {
+      const bits = [b.guests || "Guests"];
+      const fam = this.familyLine(b);
+      if (fam) bits.push(fam);
+      return bits.join(" · ");
+    };
     if (!here.length) {
       const n = next[0];
-      return "<p>The house is empty right now.</p>" + (n ? "<p>Next: <b>" + UI.esc(n.guests || "A stay") + "</b> from " + UI.fmt(n.arrival) + ".</p>" : "");
+      return "<p>The house is empty right now.</p>" + (n ? "<p>Next: <b>" + UI.esc(whoLabel(n)) + "</b> from " + UI.fmt(n.arrival) + ".</p>" : "");
     }
-    return here.map((b) => "<div class='row'><div><b>" + UI.esc(b.guests || "Guests") + "</b><div class='muted'>Until " + UI.fmt(b.departure) + " · " + b.guestCount + " guests</div></div><a href='#calendar'>Stay</a></div>").join("") +
-      (next[0] ? "<p class='muted'>Next arrival: " + UI.esc(next[0].guests || "guests") + " on " + UI.fmt(next[0].arrival) + ".</p>" : "");
+    return here.map((b) => "<div class='row'><div><b>" + UI.esc(whoLabel(b)) + "</b><div class='muted'>Until " + UI.fmt(b.departure) + " · " + b.guestCount + " guests</div></div><a href='#calendar'>Stay</a></div>").join("") +
+      (next[0] ? "<p class='muted'>Next arrival: " + UI.esc(whoLabel(next[0])) + " on " + UI.fmt(next[0].arrival) + ".</p>" : "");
   },
 
   issueList(items) {
@@ -590,6 +720,8 @@ const App = {
   },
 
   renderCalendar() {
+    const openStay = this.params.id && (Store.data.bookings || []).find((x) => x.id === this.params.id);
+    if (openStay) this.cal.cursor = openStay.arrival.slice(0, 7) + "-01";
     if (!this.cal.cursor) this.cal.cursor = UI.today().slice(0, 7) + "-01";
     const mode = this.cal.mode;
     const view = document.getElementById("view");
@@ -614,6 +746,7 @@ const App = {
     const add = document.getElementById("add-stay");
     if (add) add.onclick = () => this.bookingForm();
     this.afterRender();
+    if (openStay) this.openBooking(openStay.id);
   },
 
   shiftCal(dir) {
@@ -744,7 +877,9 @@ const App = {
     const rec = (Store.data.checklistRecords || []).find((r) => r.bookingId === b.id);
     UI.modal("Stay · " + UI.fmt(b.arrival),
       this.holidayBannerHtml(b.arrival, b.departure) +
-      "<p><b>" + UI.esc(b.guests || "—") + "</b></p><p>" + UI.fmt(b.arrival) + " → " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests</p>" +
+      "<p><b>" + UI.esc(b.guests || "—") + "</b>" +
+      (this.familyLine(b) ? "<div class='muted'>" + UI.esc(this.familyLine(b)) + "</div>" : "") +
+      "</p><p>" + UI.fmt(b.arrival) + " → " + UI.fmt(b.departure) + " · " + (b.guestCount || 0) + " guests</p>" +
       "<p>" + UI.esc(b.notes || "") + "</p><p class='muted'>Booked by " + UI.esc(Store.userName(b.createdBy)) + " · " + (b.status === "blocked" ? "booked" : b.status) + "</p>" +
       (rec ? "<p>Departure checklist completed " + UI.fmtTime(rec.completedAt) + ".</p>" : "<p><a href='#house'>Open departure checklist</a></p>"),
       '<div class="actions">' +
@@ -776,6 +911,7 @@ const App = {
           '<button type="button" class="date-pick-btn" data-pick="arrival"><span>Arrival</span><strong id="bk-arrival-label">' + UI.esc(UI.fmt(b.arrival)) + "</strong></button>" +
           '<button type="button" class="date-pick-btn" data-pick="departure"><span>Departure</span><strong id="bk-departure-label">' + UI.esc(UI.fmt(b.departure)) + "</strong></button>" +
         "</div>" +
+        '<button type="button" class="btn date-clear" id="bk-clear-dates">Clear dates</button>' +
         '<input type="hidden" name="arrival" value="' + UI.esc(b.arrival || "") + '">' +
         '<input type="hidden" name="departure" value="' + UI.esc(b.departure || "") + '">' +
         '<p id="bk-date-hint" class="muted">Tap Arrival or Departure, then tap a day on the big calendar.</p>' +
@@ -806,6 +942,12 @@ const App = {
         btn.classList.toggle("on", btn.getAttribute("data-pick") === pick.field);
       });
     };
+    const setHintOpen = (open) => {
+      const hint = document.getElementById("bk-date-hint");
+      if (!hint) return;
+      hint.hidden = !!open;
+      if (!open) hint.textContent = "Tap Arrival or Departure, then tap a day on the big calendar.";
+    };
     const paintPicker = () => {
       const box = document.getElementById("bk-picker");
       if (!box || box.hidden) return;
@@ -817,7 +959,9 @@ const App = {
         '<div class="actions"><button type="button" class="btn ghost" id="bk-pick-prev">Back</button>' +
         '<button type="button" class="btn ghost" id="bk-pick-today">Today</button>' +
         '<button type="button" class="btn ghost" id="bk-pick-next">Next</button>' +
-        '<button type="button" class="btn" id="bk-pick-done">Done</button></div></div><div class="cal-stack date-picker-stack">';
+        '<button type="button" class="btn" id="bk-pick-done">Done</button>' +
+        '<button type="button" class="btn date-clear" id="bk-pick-clear">Clear dates</button></div></div>' +
+        '<div class="cal-stack date-picker-stack">';
       for (let i = 0; i < 12; i++) {
         html += this.calMonthGrid(new Date(start.getFullYear(), start.getMonth() + i, 1, 12), {
           pick: true, arrival, departure, idPrefix: "pick-"
@@ -841,6 +985,7 @@ const App = {
         paintPicker();
       };
       document.getElementById("bk-pick-done").onclick = () => closePicker();
+      document.getElementById("bk-pick-clear").onclick = () => clearDates();
       box.querySelectorAll("[data-pick-day]").forEach((el) => {
         el.onclick = () => chooseDay(el.getAttribute("data-pick-day"));
       });
@@ -848,36 +993,42 @@ const App = {
     const closePicker = () => {
       pick.field = "";
       document.getElementById("bk-picker").hidden = true;
-      document.getElementById("bk-date-hint").textContent = "Tap Arrival or Departure, then tap a day on the big calendar.";
+      setHintOpen(false);
       syncLabels();
     };
     const openPicker = (field) => {
-      pick.field = field;
-      const iso = UI.val(form, field) || UI.today();
+      pick.field = field || "arrival";
+      const iso = UI.val(form, pick.field) || UI.today();
       pick.cursor = iso.slice(0, 7) + "-01";
       document.getElementById("bk-picker").hidden = false;
-      document.getElementById("bk-date-hint").textContent = field === "departure"
-        ? "Now tap the day you leave."
-        : "Tap the day you arrive.";
+      setHintOpen(true);
       syncLabels();
       paintPicker();
     };
+    const clearDates = () => {
+      form.elements.arrival.value = "";
+      form.elements.departure.value = "";
+      showDateError("");
+      pick.field = "arrival";
+      pick.cursor = UI.today().slice(0, 7) + "-01";
+      document.getElementById("bk-picker").hidden = false;
+      setHintOpen(true);
+      syncLabels();
+      refreshExtras();
+      paintPicker();
+    };
     const chooseDay = (iso) => {
-      if (pick.field === "arrival") {
+      const arr = UI.val(form, "arrival");
+      const asArrival = pick.field === "arrival" || !arr || iso <= arr;
+      if (asArrival) {
         form.elements.arrival.value = iso;
         const dep = UI.val(form, "departure");
-        if (!dep || dep <= iso) form.elements.departure.value = UI.addDays(iso, 7);
+        if (!dep || dep <= iso) form.elements.departure.value = "";
         showDateError("");
         refreshExtras();
         pick.field = "departure";
-        document.getElementById("bk-date-hint").textContent = "Now tap the day you leave.";
         syncLabels();
         paintPicker();
-        return;
-      }
-      const arr = UI.val(form, "arrival");
-      if (arr && iso <= arr) {
-        showDateError("Arrival must be before you leave. Please pick a later departure day.");
         return;
       }
       form.elements.departure.value = iso;
@@ -888,6 +1039,8 @@ const App = {
     document.querySelectorAll(".date-pick-btn").forEach((btn) => {
       btn.onclick = () => openPicker(btn.getAttribute("data-pick"));
     });
+    const clearBtn = document.getElementById("bk-clear-dates");
+    if (clearBtn) clearBtn.onclick = () => clearDates();
     const paintCost = (est, arrival, departure, guests) => {
       const box = document.getElementById("bk-cost");
       if (box) box.outerHTML = this.costBoxHtml(est, arrival, departure, guests);
@@ -920,7 +1073,9 @@ const App = {
         notes: UI.val(f, "notes"),
         status: "booked",
         createdBy: b.createdBy || Auth.user().id,
-        createdAt: b.createdAt || new Date().toISOString()
+        createdAt: b.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        familyBranch: b.familyBranch || Store.familyBranch(Auth.user()) || ""
       };
       if (!next.arrival || !next.departure || next.departure <= next.arrival) {
         document.getElementById("bk-warn").hidden = false;
@@ -1691,7 +1846,8 @@ const App = {
     this.afterRender();
   },
 
-  renderSettings() {
+  async renderSettings() {
+    if (Auth.isAdmin()) await Store.pullRemote();
     const acts = Store.data.activity.slice(0, 40);
     const admin = Auth.isAdmin();
     const view = document.getElementById("view");
@@ -1781,6 +1937,8 @@ const App = {
       if (!u) return;
       u.schoolId = mine.value;
       u.hasSchoolChildren = !!mine.value;
+      u.updatedAt = new Date().toISOString();
+      Store.rememberUser(u);
       Store.log("update", "user", u.id, u.name + (u.schoolId ? " · " + (Store.schoolById(u.schoolId) || {}).short : " · no school"));
       Store.save();
       UI.toast("Saved");
@@ -1788,10 +1946,12 @@ const App = {
     if (!Auth.isAdmin()) return;
     document.querySelectorAll("[data-school]").forEach((sel) => {
       sel.onchange = () => {
-        const u = Store.data.users.find((x) => x.id === sel.getAttribute("data-school"));
+        const u = Store.allUsers().find((x) => x.id === sel.getAttribute("data-school"));
         if (!u) return;
         u.schoolId = sel.value;
         u.hasSchoolChildren = !!sel.value;
+        u.updatedAt = new Date().toISOString();
+        Store.rememberUser(u);
         Store.save();
         this.renderSettings();
       };
@@ -1826,25 +1986,39 @@ const App = {
       "<p>Verify code: <b>302011</b></p></div>";
   },
 
+  pinPersonRow(u, me) {
+    const pin = /^\d{4}$/.test(u.pinDisplay || "") ? u.pinDisplay : "PIN not saved — remove and add again";
+    const branch = Store.familyBranch(u);
+    return "<div class='row pin-admin-row'><div><b>" + UI.esc(u.name) + "</b>" +
+      '<div class="pin-plain">' + UI.esc(pin) + "</div>" +
+      "<div class='muted'>" + UI.esc(u.role) + "</div>" +
+      "<label class='field' style='margin:8px 0 0'><span>Family</span><select data-branch='" + u.id + "'>" +
+      this.familyOptions(branch) + "</select></label>" +
+      "<label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
+      this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
+      "<span class='actions'>" +
+      (u.id !== me.id ? "<button class='btn primary' type='button' data-openas='" + u.id + "'>Open as them</button>" : "") +
+      (u.id !== me.id ? "<button class='text-btn' type='button' data-delu='" + u.id + "'>Remove</button>" : "") +
+      "</span></div>";
+  },
+
   pinAdmin() {
     const me = Auth.user();
+    const people = Store.allUsers().slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    const groups = Store.familyBranches().map((branch) => {
+      const members = people.filter((u) => Store.familyBranch(u) === branch);
+      return '<h3 class="pin-family-head">' + UI.esc(branch) + "</h3>" +
+        (members.length ? members.map((u) => this.pinPersonRow(u, me)).join("") : "<p class='muted'>Nobody in this family yet.</p>");
+    }).join("");
+    const other = people.filter((u) => !Store.familyBranch(u));
     return '<div class="card pin-admin-card" id="family-pins">' +
       '<h2 class="pin-admin-title">Family PINs</h2>' +
       '<p class="pin-admin-sub">Everyone’s name and 4-digit PIN</p>' +
       '<p class="muted">Open as them to edit their bookings. Same name cannot be added twice.</p>' +
-      Store.data.users.map((u) => {
-        const pin = /^\d{4}$/.test(u.pinDisplay || "") ? u.pinDisplay : "Not saved yet";
-        return "<div class='row pin-admin-row'><div><b>" + UI.esc(u.name) + "</b>" +
-          '<div class="pin-plain">' + UI.esc(pin) + "</div>" +
-          "<div class='muted'>" + UI.esc(u.role) + "</div>" +
-          "<label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
-          this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
-          "<span class='actions'>" +
-          (u.id !== me.id ? "<button class='btn primary' type='button' data-openas='" + u.id + "'>Open as them</button>" : "") +
-          (u.id !== me.id ? "<button class='text-btn' type='button' data-delu='" + u.id + "'>Remove</button>" : "") +
-          "</span></div>";
-      }).join("") +
+      groups +
+      (other.length ? '<h3 class="pin-family-head">Other</h3>' + other.map((u) => this.pinPersonRow(u, me)).join("") : "") +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
+      '<label class="field"><span>Which part of the family?</span><select name="familyBranch" required>' + this.familyOptions("") + "</select></label>" +
       '<label class="field"><span>New 4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn">Add person</button></form></div>';
   },
 
@@ -1855,26 +2029,42 @@ const App = {
       e.preventDefault();
       const pin = UI.val(f, "pin").replace(/\D/g, "");
       const name = UI.val(f, "name").trim();
+      const familyBranch = UI.val(f, "familyBranch");
       if (!name) return UI.toast("Please enter a name");
+      if (Store.familyBranches().indexOf(familyBranch) < 0) return UI.toast("Please choose which part of the family.");
       if (!/^\d{4}$/.test(pin)) return UI.toast("PIN must be 4 digits");
       if (this.nameTaken(name, "")) return UI.toast("That name is already registered.");
       const salt = CryptoUtil.randomSalt();
-      const person = { id: CryptoUtil.uid("u"), name: name, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), pinDisplay: pin, createdAt: new Date().toISOString(), createdBy: Auth.user().id };
-      Store.data.users.push(person);
+      const person = { id: CryptoUtil.uid("u"), name: name, familyBranch, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), pinDisplay: pin, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: Auth.user().id };
+      Store.rememberUser(person);
       Store.addOwner(person);
       Store.log("create", "user", person.id, name);
       Store.save();
+      await Store.pushRemote();
       UI.toast("Person added");
       this.renderSettings();
     };
+    document.querySelectorAll("[data-branch]").forEach((sel) => {
+      sel.onchange = () => {
+        const u = Store.allUsers().find((x) => x.id === sel.getAttribute("data-branch"));
+        if (!u) return;
+        u.familyBranch = sel.value;
+        u.updatedAt = new Date().toISOString();
+        Store.rememberUser(u);
+        Store.save();
+        this.renderSettings();
+      };
+    });
     document.querySelectorAll("[data-openas]").forEach((b) => {
       b.onclick = () => this.openAsUser(b.getAttribute("data-openas"));
     });
     document.querySelectorAll("[data-delu]").forEach((b) => b.onclick = () => {
       if (!UI.confirm("Remove this person?")) return;
       const id = b.getAttribute("data-delu");
-      Store.data.users = Store.data.users.filter((u) => u.id !== id);
+      Store.removedIds = (Store.removedIds || []).concat([id]);
+      Store.data.users = Store.allUsers().filter((u) => u.id !== id);
       Store.data.owners = (Store.data.owners || []).filter((o) => o.id !== id);
+      Store.persistUsers();
       Store.save();
       this.renderSettings();
     });

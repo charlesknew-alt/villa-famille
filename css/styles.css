@@ -143,6 +143,23 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
   margin: 16px 0 0;
   line-height: 1.45;
 }
+.family-fieldset { border: 0; padding: 0; margin: 0 0 8px; }
+.family-fieldset legend { font-weight: 700; margin-bottom: 8px; }
+.family-pick { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.family-pick .choice-btn { min-height: 56px; font-size: 18px; }
+.family-home-note {
+  font-family: var(--serif);
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+.pin-family-head {
+  font-family: var(--serif);
+  font-size: 26px;
+  margin: 22px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.pin-family-head:first-of-type { border-top: 0; margin-top: 12px; }
 .signup-fields { margin-top: 18px; }
 .signup-fields .field input {
   min-height: 56px;
@@ -476,6 +493,52 @@ a.place-card {
   font-size: 20px;
   font-weight: 800;
 }
+.date-clear {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+.date-picker-bar .date-clear {
+  flex: 1 1 100%;
+  width: auto;
+  min-width: 140px;
+  margin: 0;
+}
+.my-trips, .for-you { margin-bottom: 16px; }
+.my-trips h3, .for-you h3 {
+  font-family: var(--serif);
+  font-size: 28px;
+  margin: 0 0 12px;
+}
+.empty-trips { font-size: 18px; }
+.trip-card {
+  border: 2px solid var(--olive);
+  background: var(--olive-soft);
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin: 0 0 12px;
+}
+.trip-card .trip-dates {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.trip-card .trip-meta { margin: 0 0 4px; font-size: 17px; }
+.trip-card .trip-open, .empty-trips + .trip-open {
+  min-height: 52px;
+  font-size: 17px;
+  margin-top: 12px;
+}
+.for-you ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.for-you li {
+  font-size: 17px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.for-you li:last-child { border-bottom: 0; }
 .date-pick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
 .date-pick-btn {
   display: grid;

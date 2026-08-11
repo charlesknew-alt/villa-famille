@@ -12,7 +12,8 @@ const Auth = {
   restore() {
     const id = localStorage.getItem(this.sessionKey);
     if (!id) return null;
-    this.current = (Store.data.users || []).find((u) => u.id === id) || null;
+    const users = Store.allUsers();
+    this.current = users.find((u) => u.id === id) || null;
     return this.current;
   },
 
@@ -47,8 +48,8 @@ const Auth = {
     try { sessionStorage.removeItem(this.returnKey); }
     catch (_) { /* private mode */ }
     if (!id) return null;
-    const admin = (Store.data.users || []).find((u) => u.id === id) ||
-      (Store.data.users || []).find((u) => u.role === "admin");
+    const users = Store.allUsers();
+    const admin = users.find((u) => u.id === id) || users.find((u) => u.role === "admin");
     if (!admin) return null;
     return this.setSession(admin);
   },
@@ -95,14 +96,12 @@ const Auth = {
     if (until) return { ok: false, locked: until };
     const clean = String(pin || "").replace(/\D/g, "");
     if (clean.length !== 4) return { ok: false, error: "PIN is 4 digits." };
-    for (const user of Store.data.users || []) {
-      const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
-      if (hash === user.pinHash) {
-        this.setSession(user);
-        Store.log("login", "user", user.id, user.name + " signed in");
-        Store.save();
-        return { ok: true, user };
-      }
+    const user = await Store.findUserByPin(clean);
+    if (user) {
+      this.setSession(user);
+      Store.log("login", "user", user.id, user.name + " signed in");
+      Store.save();
+      return { ok: true, user };
     }
     const fail = this.recordFail();
     return { ok: false, error: "That PIN is not recognised.", fails: fail.fails, locked: fail.until };

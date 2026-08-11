@@ -1,5 +1,7 @@
 {
   "repo": "villa-famille",
   "branch": "main",
-  "note": "Set owner after first push, or fill it in Settings. Data files in /data are the source of truth."
+  "jsonBlobId": "019ff126-d7b1-7f39-ba13-ad2e9e811bc2",
+  "jsonBlobUrl": "https://jsonblob.com/api/jsonBlob/019ff126-d7b1-7f39-ba13-ad2e9e811bc2",
+  "note": "Family users/bookings auto-save to this public JSONBlob. Do not put a GitHub token in the site JS."
 }
