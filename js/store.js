@@ -18,7 +18,8 @@ window.Store = {
       maintenance: [], comments: [], recurring: [], expenses: [], inventory: [],
       checklistItems: [], checklistRecords: [], mapSpots: [], systems: {},
       ideas: [], announcements: [], activity: [], settings: {},
-      schools: [], schoolHolidays: [], schoolHolidayNote: ""
+      schools: [], schoolHolidays: [], schoolHolidayNote: "",
+      notifyEvents: []
     };
   },
 
@@ -134,6 +135,14 @@ window.Store = {
       newer.pinSalt = b.pinSalt;
     }
     if (!newer.familyBranch) newer.familyBranch = a.familyBranch || b.familyBranch || "";
+    if (!newer.email) newer.email = a.email || b.email || "";
+    if (!newer.emailNotify || newer.emailNotify === "off") {
+      newer.emailNotify = (bTime >= aTime ? (b.emailNotify || a.emailNotify) : (a.emailNotify || b.emailNotify)) || "off";
+    }
+    const aLast = Date.parse(a.emailLastNotifiedAt || 0) || 0;
+    const bLast = Date.parse(b.emailLastNotifiedAt || 0) || 0;
+    if (bLast >= aLast && b.emailLastNotifiedAt) newer.emailLastNotifiedAt = b.emailLastNotifiedAt;
+    else if (a.emailLastNotifiedAt) newer.emailLastNotifiedAt = a.emailLastNotifiedAt;
     return newer;
   },
 
@@ -202,7 +211,7 @@ window.Store = {
 
   applyFamilySlice(slice, opts) {
     if (!slice || typeof slice !== "object") return;
-    const keys = ["bookings", "reviews", "places", "expenses", "maintenance", "comments", "owners", "contacts", "ideas", "checklistRecords", "schoolHolidays"];
+    const keys = ["bookings", "reviews", "places", "expenses", "maintenance", "comments", "owners", "contacts", "ideas", "checklistRecords", "schoolHolidays", "notifyEvents"];
     keys.forEach((key) => {
       if (!slice[key]) return;
       this.data[key] = FamilySync.mergeById(this.data[key] || [], slice[key]);
@@ -282,10 +291,57 @@ window.Store = {
       this.data.settings.houseCodeSalt = repoHouse.salt;
       this.data.settings.houseCodeHash = repoHouse.hash;
     }
+    this.promotePendingBookings();
     // Always publish whatever this browser knows. Admin-only repo data is not
     // enough for phones — family PINs/stays live in the cloud blob.
     this.lastPublishOk = await this.pushRemote();
+    if (window.Notify) {
+      try { await Notify.flushDigests(); } catch (_) { /* offline */ }
+    }
     return this.data;
+  },
+
+  pendingHoldMs() {
+    return 3 * 24 * 60 * 60 * 1000;
+  },
+
+  pendingDaysLeft(booking) {
+    if (!booking || booking.status !== "pending") return 0;
+    const start = Date.parse(booking.createdAt || 0) || 0;
+    if (!start) return 3;
+    return Math.max(0, Math.ceil((start + this.pendingHoldMs() - Date.now()) / 86400000));
+  },
+
+  pendingReady(booking) {
+    if (!booking || booking.status !== "pending") return false;
+    const start = Date.parse(booking.createdAt || 0) || 0;
+    if (!start) return false;
+    return Date.now() >= start + this.pendingHoldMs();
+  },
+
+  promotePendingBookings() {
+    let changed = 0;
+    (this.data.bookings || []).forEach((b) => {
+      if (b && b.status === "pending" && this.pendingReady(b)) {
+        b.status = "booked";
+        b.confirmedAt = new Date().toISOString();
+        b.updatedAt = b.confirmedAt;
+        changed += 1;
+      }
+    });
+    if (changed) {
+      this.writeLocalDraft();
+      this.queueRemotePush();
+    }
+    return changed;
+  },
+
+  confirmBooking(booking) {
+    if (!booking || booking.status === "cancelled") return booking;
+    booking.status = "booked";
+    booking.confirmedAt = new Date().toISOString();
+    booking.updatedAt = booking.confirmedAt;
+    return booking;
   },
 
   matchUserByPin(pin, users) {
@@ -391,6 +447,7 @@ window.Store = {
       maintenance: FamilySync.mergeById(remote && remote.maintenance, local.maintenance),
       comments: FamilySync.mergeById(remote && remote.comments, local.comments),
       owners: FamilySync.mergeById(remote && remote.owners, local.owners),
+      notifyEvents: FamilySync.mergeById(remote && remote.notifyEvents, local.notifyEvents),
       settings: Object.assign({}, remote && remote.settings, local.settings)
     };
     const ok = await FamilySync.push(merged);
@@ -627,11 +684,12 @@ window.Store = {
     const list = (this.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
     if (list.some((b) => b.status === "blocked")) return "blocked";
     if (list.some((b) => b.status === "booked")) return "booked";
+    if (list.some((b) => b.status === "pending")) return "pending";
     return "available";
   },
 
   staysOn(iso) {
-    return (this.data.bookings || []).filter((b) => b.status === "booked" && b.arrival <= iso && iso < b.departure);
+    return (this.data.bookings || []).filter((b) => (b.status === "booked" || b.status === "pending") && b.arrival <= iso && iso < b.departure);
   },
 
   currentStays() {
@@ -642,8 +700,12 @@ window.Store = {
   upcomingBookings() {
     const t = UI.today();
     return (this.data.bookings || [])
-      .filter((b) => b.status === "booked" && b.arrival >= t)
+      .filter((b) => (b.status === "booked" || b.status === "pending") && b.arrival >= t)
       .sort((a, b) => a.arrival.localeCompare(b.arrival));
+  },
+
+  activeStayStatuses() {
+    return ["booked", "pending", "blocked"];
   },
 
   monthName(n) {
@@ -687,7 +749,7 @@ window.Store = {
   myUpcomingStays(user) {
     const t = UI.today();
     return (this.data.bookings || [])
-      .filter((b) => b.status === "booked" && b.departure >= t && this.stayBelongsTo(b, user))
+      .filter((b) => (b.status === "booked" || b.status === "pending") && b.departure >= t && this.stayBelongsTo(b, user))
       .sort((a, b) => a.arrival.localeCompare(b.arrival));
   },
 

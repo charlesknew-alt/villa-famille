@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- Ship checklist: bump data-tfh-version, js/version.js, and every ?v= to the same suffix (or run scripts/bump-version.ps1). -->
-<html lang="en" data-tfh-version="20260811s">
+<html lang="en" data-tfh-version="20260811t">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=20260811s" />
-  <script src="js/version.js?v=20260811s"></script>
+  <link rel="stylesheet" href="css/styles.css?v=20260811t" />
+  <script src="js/version.js?v=20260811t"></script>
 </head>
 <body>
   <div id="boot-screen" class="boot-screen">
@@ -56,11 +56,12 @@
 
       <div id="login-signup-panel" hidden>
         <h2>Create your PIN</h2>
-        <p class="login-sub">Name, surname, which part of the family, a 4-digit PIN, and the house code you were given.</p>
+        <p class="login-sub">Name, surname, email, which part of the family, a 4-digit PIN, and the house code you were given.</p>
         <p id="signup-error" class="pin-error" hidden></p>
         <form id="signup-form" class="signup-fields">
           <label class="field"><span>Name</span><input name="firstName" autocomplete="given-name" required></label>
           <label class="field"><span>Surname</span><input name="lastName" autocomplete="family-name" required></label>
+          <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
           <fieldset class="field family-fieldset">
             <legend>Which part of the family?</legend>
             <input type="hidden" name="familyBranch" id="signup-family" value="">
@@ -137,14 +138,15 @@
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
 
-  <script src="data/house-data.js?v=20260811s"></script>
-  <script src="data/fares-data.js?v=20260811s"></script>
-  <script src="js/crypto.js?v=20260811s"></script>
-  <script src="lib/sync.js?v=20260811s"></script>
-  <script src="js/store.js?v=20260811s"></script>
-  <script src="js/auth.js?v=20260811s"></script>
-  <script src="js/ui.js?v=20260811s"></script>
-  <script src="lib/flights.js?v=20260811s"></script>
-  <script src="js/app.js?v=20260811s"></script>
+  <script src="data/house-data.js?v=20260811t"></script>
+  <script src="data/fares-data.js?v=20260811t"></script>
+  <script src="js/crypto.js?v=20260811t"></script>
+  <script src="lib/sync.js?v=20260811t"></script>
+  <script src="js/store.js?v=20260811t"></script>
+  <script src="js/auth.js?v=20260811t"></script>
+  <script src="js/ui.js?v=20260811t"></script>
+  <script src="lib/flights.js?v=20260811t"></script>
+  <script src="lib/notify.js?v=20260811t"></script>
+  <script src="js/app.js?v=20260811t"></script>
 </body>
 </html>
