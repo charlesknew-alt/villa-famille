@@ -179,6 +179,14 @@ window.Store = {
     const bLast = Date.parse(b.emailLastNotifiedAt || 0) || 0;
     if (bLast >= aLast && b.emailLastNotifiedAt) newer.emailLastNotifiedAt = b.emailLastNotifiedAt;
     else if (a.emailLastNotifiedAt) newer.emailLastNotifiedAt = a.emailLastNotifiedAt;
+    const problemIds = [];
+    const seenProblem = {};
+    (a.emailProblemsNotifiedIds || []).concat(b.emailProblemsNotifiedIds || []).forEach((id) => {
+      if (!id || seenProblem[id]) return;
+      seenProblem[id] = true;
+      problemIds.push(id);
+    });
+    if (problemIds.length) newer.emailProblemsNotifiedIds = problemIds.slice(-200);
     return newer;
   },
 

@@ -1432,7 +1432,8 @@ window.App = {
           completionNotes: form.elements.completionNotes ? UI.val(form, "completionNotes") : "",
           photos, videos, invoices,
           createdBy: m.createdBy || Auth.user().id,
-          createdAt: m.createdAt || new Date().toISOString()
+          createdAt: m.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         const i = Store.data.maintenance.findIndex((x) => x.id === next.id);
         if (i >= 0) Store.data.maintenance[i] = next;
@@ -2152,7 +2153,7 @@ window.App = {
     const status = (window.Notify && Notify.cfg) ? Notify.statusLine() : "Save your email, then send a test.";
     return '<div class="card" style="margin-top:16px" id="email-alerts">' +
       "<h3>Booking emails</h3>" +
-      "<p>Get an email when someone books the house. Choose <b>Straight away</b> to be notified as soon as a stay is saved.</p>" +
+      "<p>Get an email when someone books the house. Choose <b>Straight away</b> for new stays. <b>Once a week</b> also includes new house problems, and only sends when there are new problems — it will not repeat the same list every week.</p>" +
       '<form id="email-alerts-form">' +
       '<label class="field"><span>Your email</span><input name="email" type="email" autocomplete="email" required value="' + UI.esc(me.email || "") + '" placeholder="you@example.com"></label>' +
       '<label class="field"><span>When should we email you?</span><select name="emailNotify">' + this.emailNotifyOptions(me.emailNotify || "off") + "</select></label>" +
