@@ -96,6 +96,7 @@ const Auth = {
     if (until) return { ok: false, locked: until };
     const clean = String(pin || "").replace(/\D/g, "");
     if (clean.length !== 4) return { ok: false, error: "PIN is 4 digits." };
+    try { await Store.pullRemote(); } catch (_) { /* offline */ }
     const user = await Store.findUserByPin(clean);
     if (user) {
       this.setSession(user);

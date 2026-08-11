@@ -253,10 +253,12 @@ const App = {
       Auth.setSession(person);
       Store.log("create", "user", person.id, person.name + " created a PIN");
       Store.save();
-      await Store.pushRemote();
+      const synced = await Store.pushRemote();
       form.reset();
       this.showApp();
-      UI.toast("Welcome, " + person.name);
+      UI.toast(synced
+        ? "Welcome, " + person.name
+        : "Welcome, " + person.name + ". Saved on this device — if a phone cannot see this PIN yet, wait a moment and try again.");
     } catch (ex) {
       showErr((ex && ex.message) ? ex.message : "Could not create your PIN. Please try again.");
     } finally {
@@ -1062,9 +1064,10 @@ const App = {
     };
     form.elements.guestCount.onchange = refreshExtras;
     refreshExtras();
-    form.onsubmit = (e) => {
+    form.onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
+      const saveBtn = form.querySelector(".stay-save");
       const next = {
         id: b.id || CryptoUtil.uid("b"),
         arrival: UI.val(f, "arrival"),
@@ -1104,10 +1107,16 @@ const App = {
       if (i >= 0) Store.data.bookings[i] = next;
       else Store.data.bookings.push(next);
       Store.log(b.id ? "edit" : "create", "booking", next.id, next.guests || next.status);
-      Store.save();
-      UI.closeModal();
-      UI.toast("Stay saved");
-      this.renderCalendar();
+      if (saveBtn) saveBtn.disabled = true;
+      try {
+        Store.save();
+        const synced = await Store.pushRemote();
+        UI.closeModal();
+        UI.toast(synced ? "Stay saved" : "Stay saved on this computer only — the phone will not see it yet. Check your connection and tap Save stay again.");
+        this.renderCalendar();
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+      }
     };
   },
 
@@ -2062,8 +2071,8 @@ const App = {
       Store.addOwner(person);
       Store.log("create", "user", person.id, name);
       Store.save();
-      await Store.pushRemote();
-      UI.toast("Person added");
+      const synced = await Store.pushRemote();
+      UI.toast(synced ? "Person added" : "Person saved on this device only — other phones will not see them yet.");
       this._pinScroll = "pin-family-" + familyBranch;
       this.renderSettings();
     };

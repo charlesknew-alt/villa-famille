@@ -1,7 +1,7 @@
 {
   "repo": "villa-famille",
   "branch": "main",
-  "jsonBlobId": "019ff126-d7b1-7f39-ba13-ad2e9e811bc2",
-  "jsonBlobUrl": "https://jsonblob.com/api/jsonBlob/019ff126-d7b1-7f39-ba13-ad2e9e811bc2",
-  "note": "Family users/bookings auto-save to this public JSONBlob. Do not put a GitHub token in the site JS."
+  "jsonBlobId": "019ff15c-4188-76c2-b7ee-8fb7c20316e8",
+  "jsonBlobUrl": "https://jsonblob.com/api/jsonBlob/019ff15c-4188-76c2-b7ee-8fb7c20316e8",
+  "note": "Family users/bookings auto-save here (browser GET+PUT, no GitHub token). Previous blob 019ff126 stayed empty because the site never completed a write. pinDisplay must stay on each user."
 }

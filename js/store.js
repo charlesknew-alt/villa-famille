@@ -282,40 +282,56 @@ const Store = {
       this.data.settings.houseCodeSalt = repoHouse.salt;
       this.data.settings.houseCodeHash = repoHouse.hash;
     }
-    if (remote || keptUsers.length || (this.data.users || []).length > 1) {
-      this.pushRemote().catch(() => {});
+    const extraPeople = (this.data.users || []).filter((u) => u && u.id && u.id !== "u-admin");
+    const localDraftHasFamily = !!(draft && (
+      (draft.bookings || []).length ||
+      (draft.reviews || []).length ||
+      (draft.expenses || []).length ||
+      (draft.maintenance || []).length ||
+      (draft.users || []).some((u) => u && u.id && u.id !== "u-admin")
+    ));
+    if (keptUsers.length || extraPeople.length || localDraftHasFamily) {
+      await this.pushRemote();
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'C',location:'store.js:load',message:'store load done',data:{keptUserCount:keptUsers.length,remoteOk:!!remote,remoteUserCount:(this._remoteUsers||[]).length,localUserCount:(this.data.users||[]).length,localBookingCount:(this.data.bookings||[]).length,willPush:!!(remote||keptUsers.length||(this.data.users||[]).length>1)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return this.data;
+  },
+
+  matchUserByPin(pin, users) {
+    const clean = String(pin || "").replace(/\D/g, "");
+    const list = users || [];
+    for (let i = 0; i < list.length; i++) {
+      const user = list[i];
+      if (user && user.pinDisplay === clean) return user;
+    }
+    return null;
+  },
+
+  async matchUserByPinHash(pin, users) {
+    const clean = String(pin || "").replace(/\D/g, "");
+    const list = users || [];
+    for (let i = 0; i < list.length; i++) {
+      const user = list[i];
+      if (user && user.pinSalt && user.pinHash) {
+        try {
+          const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
+          if (hash === user.pinHash) return user;
+        } catch (_) { /* bad salt */ }
+      }
+    }
+    return null;
   },
 
   async findUserByPin(pin) {
     const clean = String(pin || "").replace(/\D/g, "");
-    const users = this.allUsers();
-    this.data.users = this.mergeUsers(this.data.users, users);
-    for (let i = 0; i < users.length; i++) {
-      const user = users[i];
-      if (user.pinSalt && user.pinHash) {
-        try {
-          const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
-          if (hash === user.pinHash) {
-            // #region agent log
-            fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'F',location:'store.js:findUserByPin',message:'pin lookup',data:{userCount:users.length,pinLen:clean.length,found:true,via:'hash',role:user.role||''},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
-            return user;
-          }
-        } catch (_) { /* bad salt */ }
-      }
-    }
-    for (let j = 0; j < users.length; j++) {
-      if (users[j].pinDisplay === clean) return users[j];
-    }
-    // #region agent log
-    fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'F',location:'store.js:findUserByPin',message:'pin lookup',data:{userCount:users.length,pinLen:clean.length,found:false,roles:(users||[]).map(function(u){return u.role||'';})},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    return null;
+    const search = async () => {
+      const users = this.allUsers();
+      this.data.users = this.mergeUsers(this.data.users, users);
+      return (await this.matchUserByPinHash(clean, users)) || this.matchUserByPin(clean, users);
+    };
+    let user = await search();
+    if (user) return user;
+    await this.pullRemote();
+    return search();
   },
 
   async pullRemote() {
@@ -339,46 +355,55 @@ const Store = {
     if (!window.FamilySync) return false;
     if (this._pushing) {
       this._pushAgain = true;
-      return false;
+      return new Promise((resolve) => {
+        (this._pushWaiters = this._pushWaiters || []).push(resolve);
+      });
     }
     this._pushing = true;
+    let ok = false;
     try {
-      const remote = await FamilySync.pull();
-      if (remote) this._remoteUsers = remote.users || [];
-      const local = FamilySync.familySlice(this.data);
-      local.users = this.mergeUsers(local.users, this.collectLocalUsers(), this._remoteUsers);
-      local.removedIds = this.removedIds || [];
-      const merged = {
-        users: this.mergeUsers(remote && remote.users, local.users),
-        removedIds: (remote && remote.removedIds || []).concat(local.removedIds || []),
-        bookings: FamilySync.mergeById(remote && remote.bookings, local.bookings),
-        reviews: FamilySync.mergeById(remote && remote.reviews, local.reviews),
-        places: FamilySync.mergeById(remote && remote.places, local.places),
-        expenses: FamilySync.mergeById(remote && remote.expenses, local.expenses),
-        maintenance: FamilySync.mergeById(remote && remote.maintenance, local.maintenance),
-        comments: FamilySync.mergeById(remote && remote.comments, local.comments),
-        owners: FamilySync.mergeById(remote && remote.owners, local.owners),
-        settings: Object.assign({}, remote && remote.settings, local.settings)
-      };
-      const ok = await FamilySync.push(merged);
-      // #region agent log
-      fetch('http://127.0.0.1:7588/ingest/1d17a817-3fb2-4d95-8b0b-17bae48361e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'36c946'},body:JSON.stringify({sessionId:'36c946',runId:'pre-fix',hypothesisId:'C',location:'store.js:pushRemote',message:'pushRemote finished',data:{ok:ok,localUserCount:(local.users||[]).length,localBookingCount:(local.bookings||[]).length,mergedUserCount:(merged.users||[]).length,mergedBookingCount:(merged.bookings||[]).length,remoteUserCount:(remote&&remote.users||[]).length,remoteBookingCount:(remote&&remote.bookings||[]).length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      if (ok) {
-        this._remoteUsers = merged.users;
-        this.data.users = this.mergeUsers(this.data.users, merged.users);
-        this.persistUsers();
-      }
-      return ok;
+      ok = await this._pushRemoteOnce();
     } catch (_) {
-      return false;
+      ok = false;
     } finally {
       this._pushing = false;
       if (this._pushAgain) {
         this._pushAgain = false;
-        this.pushRemote().catch(() => {});
+        try { ok = await this.pushRemote(); }
+        catch (_) { ok = false; }
       }
+      const waiters = this._pushWaiters || [];
+      this._pushWaiters = [];
+      waiters.forEach((fn) => fn(ok));
     }
+    return ok;
+  },
+
+  async _pushRemoteOnce() {
+    const remote = await FamilySync.pull();
+    if (remote) this._remoteUsers = remote.users || [];
+    const local = FamilySync.familySlice(this.data);
+    local.users = this.mergeUsers(local.users, this.collectLocalUsers(), this._remoteUsers);
+    local.removedIds = this.removedIds || [];
+    const merged = {
+      users: this.mergeUsers(remote && remote.users, local.users),
+      removedIds: (remote && remote.removedIds || []).concat(local.removedIds || []),
+      bookings: FamilySync.mergeById(remote && remote.bookings, local.bookings),
+      reviews: FamilySync.mergeById(remote && remote.reviews, local.reviews),
+      places: FamilySync.mergeById(remote && remote.places, local.places),
+      expenses: FamilySync.mergeById(remote && remote.expenses, local.expenses),
+      maintenance: FamilySync.mergeById(remote && remote.maintenance, local.maintenance),
+      comments: FamilySync.mergeById(remote && remote.comments, local.comments),
+      owners: FamilySync.mergeById(remote && remote.owners, local.owners),
+      settings: Object.assign({}, remote && remote.settings, local.settings)
+    };
+    const ok = await FamilySync.push(merged);
+    if (ok) {
+      this._remoteUsers = merged.users;
+      this.data.users = this.mergeUsers(this.data.users, merged.users);
+      this.persistUsers();
+    }
+    return ok;
   },
 
   async checkHouseCode(code) {
