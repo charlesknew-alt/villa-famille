@@ -1013,25 +1013,28 @@ window.App = {
       this.renderCalendar();
     };
     const cx = document.getElementById("cx-b");
-    if (cx) cx.onclick = () => {
+    if (cx) cx.onclick = async () => {
       if (!UI.confirm("Cancel this stay?")) return;
       b.status = "cancelled";
       b.cancelledBy = Auth.user().id;
       b.cancelledAt = new Date().toISOString();
+      b.updatedAt = b.cancelledAt;
       Store.log("cancel", "booking", b.id, b.guests);
       Store.save();
+      const synced = await Store.pushRemote();
       UI.closeModal();
-      UI.toast("Stay cancelled");
+      UI.toast(synced ? "Stay cancelled" : "Stay cancelled on this phone — cloud sync failed, try Share to phones.");
       this.renderCalendar();
     };
     const del = document.getElementById("del-b");
-    if (del) del.onclick = () => {
+    if (del) del.onclick = async () => {
       if (!UI.confirm("Delete this stay forever? This cannot be undone.")) return;
       Store.deleteBooking(b.id);
       Store.log("delete", "booking", b.id, b.guests || "stay deleted");
       Store.save();
+      const synced = await Store.pushRemote();
       UI.closeModal();
-      UI.toast("Stay deleted");
+      UI.toast(synced ? "Stay deleted" : "Stay deleted on this phone — cloud sync failed, try Share to phones.");
       this.renderCalendar();
     };
   },

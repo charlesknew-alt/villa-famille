@@ -2,6 +2,7 @@ window.Store = {
   key: "tfh-draft-v3",
   usersKey: "tfh-users",
   removedKey: "tfh-removed",
+  removedBookingsKey: "tfh-removed-bookings",
   ghKey: "tfh-gh",
   legacyDraftKeys: ["tfh-draft-v3", "tfh-draft-v2", "tfh-draft-v1", "tfh-pending"],
   data: null,
@@ -9,6 +10,7 @@ window.Store = {
   source: "repo",
   _remoteUsers: [],
   removedIds: [],
+  removedBookingIds: [],
 
   empty() {
     return {
@@ -65,6 +67,40 @@ window.Store = {
     try {
       localStorage.setItem(this.removedKey, JSON.stringify(this.removedIds || []));
     } catch (_) { /* private mode / quota */ }
+  },
+
+  readSavedRemovedBookingIds() {
+    const raw = this.readJson(localStorage, this.removedBookingsKey);
+    return Array.isArray(raw) ? raw : [];
+  },
+
+  persistRemovedBookingIds() {
+    try {
+      localStorage.setItem(this.removedBookingsKey, JSON.stringify(this.removedBookingIds || []));
+    } catch (_) { /* private mode / quota */ }
+  },
+
+  uniqIds(list) {
+    const seen = {};
+    const out = [];
+    (list || []).forEach((id) => {
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      out.push(id);
+    });
+    return out;
+  },
+
+  rememberRemovedBooking(id) {
+    if (!id) return;
+    this.removedBookingIds = this.uniqIds((this.removedBookingIds || []).concat([id]));
+    this.persistRemovedBookingIds();
+  },
+
+  pruneRemovedBookings() {
+    const gone = this.removedBookingIds || [];
+    if (!this.data || !gone.length) return;
+    this.data.bookings = (this.data.bookings || []).filter((b) => b && gone.indexOf(b.id) < 0);
   },
 
   collectLocalUsers() {
@@ -229,6 +265,11 @@ window.Store = {
         this.removedIds = (this.removedIds || []).concat(slice.removedIds);
       }
     }
+    if (Array.isArray(slice.removedBookingIds) && slice.removedBookingIds.length) {
+      this.removedBookingIds = this.uniqIds((this.removedBookingIds || []).concat(slice.removedBookingIds));
+      this.persistRemovedBookingIds();
+    }
+    this.pruneRemovedBookings();
   },
 
   writeLocalDraft() {
@@ -247,6 +288,7 @@ window.Store = {
   async load() {
     const keptUsers = this.collectLocalUsers();
     this.removedIds = this.readSavedRemovedIds();
+    this.removedBookingIds = this.readSavedRemovedBookingIds();
     let repo = null;
     try {
       const res = await fetch("data/house.json", { cache: "no-store" });
@@ -283,6 +325,7 @@ window.Store = {
       this.data.users
     );
     this.persistUsers();
+    this.pruneRemovedBookings();
     this.writeLocalDraft();
     this.dirty = false;
     this.normalize();
@@ -355,10 +398,15 @@ window.Store = {
   },
 
   deleteBooking(id) {
-    if (!this.data || !id) return null;
+    if (!id) return null;
+    if (!this.data) this.data = this.empty();
+    this.rememberRemovedBooking(id);
     const list = this.data.bookings || [];
     const i = list.findIndex((b) => b && b.id === id);
-    if (i < 0) return null;
+    if (i < 0) {
+      this.pruneRemovedBookings();
+      return null;
+    }
     const removed = list[i];
     list.splice(i, 1);
     this.data.bookings = list;
@@ -458,10 +506,17 @@ window.Store = {
     const local = FamilySync.familySlice(this.data);
     local.users = this.mergeUsers(local.users, this.collectLocalUsers(), this._remoteUsers);
     local.removedIds = this.removedIds || [];
+    local.removedBookingIds = this.removedBookingIds || [];
+    const removedBookingIds = this.uniqIds(
+      (remote && remote.removedBookingIds || []).concat(local.removedBookingIds || [])
+    );
+    const bookings = FamilySync.mergeById(remote && remote.bookings, local.bookings)
+      .filter((b) => b && removedBookingIds.indexOf(b.id) < 0);
     const merged = {
       users: this.mergeUsers(remote && remote.users, local.users),
       removedIds: (remote && remote.removedIds || []).concat(local.removedIds || []),
-      bookings: FamilySync.mergeById(remote && remote.bookings, local.bookings),
+      removedBookingIds: removedBookingIds,
+      bookings: bookings,
       reviews: FamilySync.mergeById(remote && remote.reviews, local.reviews),
       places: FamilySync.mergeById(remote && remote.places, local.places),
       expenses: FamilySync.mergeById(remote && remote.expenses, local.expenses),
@@ -475,6 +530,8 @@ window.Store = {
     if (ok) {
       this._remoteUsers = merged.users;
       this.data.users = this.mergeUsers(this.data.users, merged.users);
+      this.removedBookingIds = removedBookingIds;
+      this.persistRemovedBookingIds();
       this.applyFamilySlice(merged, { applyRemoved: false });
       this.persistUsers();
       this.writeLocalDraft();
