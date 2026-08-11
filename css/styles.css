@@ -518,6 +518,11 @@ a.place-card {
   padding: 6px;
   cursor: pointer;
   overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .cal-day.available { background: #d7ead0; }
 .cal-day.booked,
@@ -627,10 +632,21 @@ a.place-card {
   overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 .week-col { min-height: 180px; }
 #cal-body { max-width: 100%; min-width: 0; overflow: hidden; }
 #cal-hist { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cal-stack, .cal-grid {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }

@@ -822,10 +822,34 @@ window.App = {
     this.scrollCalStart();
   },
 
+  calDayIndex() {
+    const byDay = {};
+    const statusByDay = {};
+    const bookings = Store.data.bookings || [];
+    for (let i = 0; i < bookings.length; i++) {
+      const b = bookings[i];
+      if (!b || !b.arrival || !b.departure || b.status === "cancelled") continue;
+      let iso = b.arrival;
+      let guard = 0;
+      while (iso < b.departure && guard < 400) {
+        (byDay[iso] = byDay[iso] || []).push(b);
+        const cur = statusByDay[iso];
+        if (b.status === "blocked") statusByDay[iso] = "blocked";
+        else if (b.status === "booked" && cur !== "blocked") statusByDay[iso] = "booked";
+        else if (b.status === "pending" && cur !== "blocked" && cur !== "booked") statusByDay[iso] = "pending";
+        else if (!cur) statusByDay[iso] = b.status || "booked";
+        iso = UI.addDays(iso, 1);
+        guard += 1;
+      }
+    }
+    return { byDay: byDay, statusByDay: statusByDay };
+  },
+
   paintCal() {
     const body = document.getElementById("cal-body");
     const hist = document.getElementById("cal-hist");
     if (!body) return;
+    this._calIndex = this.calDayIndex();
     if (this.cal.mode === "list") body.innerHTML = this.calList();
     else if (this.cal.mode === "week") body.innerHTML = this.calWeek();
     else body.innerHTML = this.calMonth();
@@ -835,9 +859,27 @@ window.App = {
         "</td><td><span class='chip " + this.stayChipClass(b) + "'>" + this.stayStatusLabel(b) +
         "</span></td><td><button class='text-btn' data-open='" + b.id + "'>Open</button></td></tr>").join("") + "</table>"
       : "<p class='empty'>No stays yet.</p>";
-    body.querySelectorAll("[data-day]").forEach((el) => el.onclick = () => this.onDay(el.getAttribute("data-day")));
-    hist.querySelectorAll("[data-open]").forEach((el) => el.onclick = () => this.openBooking(el.getAttribute("data-open")));
-    body.querySelectorAll("[data-open]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); this.openBooking(el.getAttribute("data-open")); });
+    // One delegated handler instead of hundreds of onclick bindings (keeps phones responsive).
+    body.onclick = (e) => {
+      const open = e.target.closest("[data-open]");
+      if (open) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openBooking(open.getAttribute("data-open"));
+        return;
+      }
+      const day = e.target.closest("[data-day]");
+      if (day) this.onDay(day.getAttribute("data-day"));
+    };
+    hist.onclick = (e) => {
+      const open = e.target.closest("[data-open]");
+      if (open) this.openBooking(open.getAttribute("data-open"));
+    };
+    const more = document.getElementById("cal-more-months");
+    if (more) more.onclick = () => {
+      this.cal.months = Math.min(18, (this.cal.months || 4) + 4);
+      this.paintCal();
+    };
   },
 
   scrollCalStart() {
@@ -847,9 +889,14 @@ window.App = {
 
   calMonth() {
     const start = new Date(this.cal.cursor.slice(0, 7) + "-01T12:00:00");
+    const count = Math.max(3, Math.min(18, this.cal.months || 4));
+    this.cal.months = count;
     let html = '<div class="cal-stack">';
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < count; i++) {
       html += this.calMonthGrid(new Date(start.getFullYear(), start.getMonth() + i, 1, 12));
+    }
+    if (count < 18) {
+      html += '<div class="actions" style="margin:12px 0 4px"><button type="button" class="btn" id="cal-more-months">Show more months</button></div>';
     }
     return html + "</div>";
   },
@@ -865,11 +912,13 @@ window.App = {
         ["Mon", "M"], ["Tue", "T"], ["Wed", "W"], ["Thu", "T"], ["Fri", "F"], ["Sat", "S"], ["Sun", "S"]
       ].map((d) => '<div class="cal-dow" title="' + d[0] + '"><span class="cal-dow-full">' + d[0] + '</span><span class="cal-dow-short">' + d[1] + "</span></div>").join("");
     for (let i = 0; i < firstDow; i++) html += '<div class="cal-day out"></div>';
+    const idx = this._calIndex || this.calDayIndex();
     for (let day = 1; day <= days; day++) {
       const iso = start.toISOString().slice(0, 8) + String(day).padStart(2, "0");
-      const st = Store.dayStatus(iso) === "blocked" ? "booked" : Store.dayStatus(iso);
+      const rawSt = (idx.statusByDay && idx.statusByDay[iso]) || "available";
+      const st = rawSt === "blocked" ? "booked" : rawSt;
       const hol = Store.holidayOn(iso);
-      const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
+      const stays = (idx.byDay && idx.byDay[iso]) || [];
       const selected = opts.arrival === iso || opts.departure === iso;
       const inRange = !!(opts.arrival && opts.departure && iso > opts.arrival && iso < opts.departure);
       html += '<div class="cal-day ' + st + (hol ? " holiday" : "") + (iso === UI.today() ? " today" : "") +
@@ -878,8 +927,8 @@ window.App = {
         (hol ? ' <span class="cal-flag" title="' + UI.esc(hol.label) + '">H</span>' : "") + "</b>" +
         (opts.pick ? "" : stays.map((b) => {
           const text = (b.status === "pending" ? "Pending · " : "") + String(b.guests || b.notes || b.status || "");
-          return '<a class="cal-pill" data-open="' + b.id + '" title="' + UI.esc(text) + '">' +
-            UI.esc(text.slice(0, 18)) + "</a>";
+          return '<span class="cal-pill" role="button" tabindex="0" data-open="' + b.id + '" title="' + UI.esc(text) + '">' +
+            UI.esc(text.slice(0, 18)) + "</span>";
         }).join("")) +
         "</div>";
     }
@@ -908,15 +957,18 @@ window.App = {
     const d = new Date(this.cal.cursor + "T12:00:00");
     const dow = (d.getDay() + 6) % 7;
     d.setDate(d.getDate() - dow);
+    const idx = this._calIndex || this.calDayIndex();
     let html = '<div class="cal-grid">';
     for (let i = 0; i < 7; i++) {
       const iso = d.toISOString().slice(0, 10);
-      const stays = (Store.data.bookings || []).filter((b) => b.status !== "cancelled" && b.arrival <= iso && iso < b.departure);
+      const stays = (idx.byDay && idx.byDay[iso]) || [];
       const hol = Store.holidayOn(iso);
-      html += '<div class="cal-day week-col ' + (Store.dayStatus(iso) === "blocked" ? "booked" : Store.dayStatus(iso)) + (hol ? " holiday" : "") + '" data-day="' + iso + '"><b>' +
+      const rawSt = (idx.statusByDay && idx.statusByDay[iso]) || "available";
+      const st = rawSt === "blocked" ? "booked" : rawSt;
+      html += '<div class="cal-day week-col ' + st + (hol ? " holiday" : "") + '" data-day="' + iso + '"><b>' +
         d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
         (hol ? ' <span class="cal-flag">H</span>' : "") + "</b>" +
-        stays.map((b) => "<div class='cal-pill' data-open='" + b.id + "'>" + UI.esc(b.guests || b.notes || b.status) + "</div>").join("") +
+        stays.map((b) => "<span class='cal-pill' role='button' tabindex='0' data-open='" + b.id + "'>" + UI.esc(b.guests || b.notes || b.status) + "</span>").join("") +
         "</div>";
       d.setDate(d.getDate() + 1);
     }
@@ -997,46 +1049,42 @@ window.App = {
     if (conf) conf.onclick = () => {
       Store.confirmBooking(b);
       Store.log("confirm", "booking", b.id, b.guests || "stay confirmed");
-      Store.save();
-      UI.closeModal();
-      UI.toast("Stay confirmed");
-      this.renderCalendar();
+      this.afterStayChange("Stay confirmed");
     };
     const pend = document.getElementById("pending-b");
     if (pend) pend.onclick = () => {
       if (!UI.confirm("Put this stay back to pending?")) return;
       Store.unconfirmBooking(b);
       Store.log("unconfirm", "booking", b.id, b.guests || "stay pending again");
-      Store.save();
-      UI.closeModal();
-      UI.toast("Stay set back to pending");
-      this.renderCalendar();
+      this.afterStayChange("Stay set back to pending");
     };
     const cx = document.getElementById("cx-b");
-    if (cx) cx.onclick = async () => {
+    if (cx) cx.onclick = () => {
       if (!UI.confirm("Cancel this stay?")) return;
       b.status = "cancelled";
       b.cancelledBy = Auth.user().id;
       b.cancelledAt = new Date().toISOString();
       b.updatedAt = b.cancelledAt;
       Store.log("cancel", "booking", b.id, b.guests);
-      Store.save();
-      const synced = await Store.pushRemote();
-      UI.closeModal();
-      UI.toast(synced ? "Stay cancelled" : "Stay cancelled on this phone — cloud sync failed, try Share to phones.");
-      this.renderCalendar();
+      this.afterStayChange("Stay cancelled");
     };
     const del = document.getElementById("del-b");
-    if (del) del.onclick = async () => {
+    if (del) del.onclick = () => {
       if (!UI.confirm("Delete this stay forever? This cannot be undone.")) return;
       Store.deleteBooking(b.id);
       Store.log("delete", "booking", b.id, b.guests || "stay deleted");
-      Store.save();
-      const synced = await Store.pushRemote();
-      UI.closeModal();
-      UI.toast(synced ? "Stay deleted" : "Stay deleted on this phone — cloud sync failed, try Share to phones.");
-      this.renderCalendar();
+      this.afterStayChange("Stay deleted");
     };
+  },
+
+  afterStayChange(toastMsg) {
+    UI.closeModal();
+    UI.toast(toastMsg || "Stay updated");
+    // Paint immediately so the calendar clears without waiting on cloud sync.
+    if (document.getElementById("cal-body")) this.paintCal();
+    else this.renderCalendar();
+    // Local save + queued background push — never block the UI on the network.
+    Store.save();
   },
 
   bookingForm(existing) {

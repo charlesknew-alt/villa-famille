@@ -282,13 +282,21 @@ window.Store = {
 
   writeLocalDraft() {
     try {
-      const json = JSON.stringify(this.data);
+      // Always strip media first — stringifying base64 photos/videos freezes phones.
+      const slim = (typeof FamilySync !== "undefined" && FamilySync.stripPhotos)
+        ? FamilySync.stripPhotos(this.data)
+        : this.data;
+      const json = JSON.stringify(slim);
       localStorage.setItem(this.key, json);
       sessionStorage.setItem(this.key, json);
     } catch (_) {
       try {
-        const slim = FamilySync.stripPhotos(this.data);
-        localStorage.setItem(this.key, JSON.stringify(slim));
+        localStorage.setItem(this.key, JSON.stringify({
+          version: (this.data && this.data.version) || 1,
+          bookings: (this.data && this.data.bookings) || [],
+          users: (this.data && this.data.users) || [],
+          settings: (this.data && this.data.settings) || {}
+        }));
       } catch (__) { /* quota */ }
     }
   },
