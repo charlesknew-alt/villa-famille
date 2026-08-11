@@ -1,7 +1,9 @@
 const Store = {
   key: "tfh-draft-v3",
   usersKey: "tfh-users",
+  removedKey: "tfh-removed",
   ghKey: "tfh-gh",
+  legacyDraftKeys: ["tfh-draft-v3", "tfh-draft-v2", "tfh-draft-v1", "tfh-pending"],
   data: null,
   dirty: false,
   source: "repo",
@@ -27,11 +29,15 @@ const Store = {
     } catch (_) { return null; }
   },
 
-  readLocalUsers() {
-    const raw = this.readJson(localStorage, this.usersKey);
+  usersFrom(raw) {
+    if (!raw) return [];
     if (Array.isArray(raw)) return raw;
-    if (raw && Array.isArray(raw.users)) return raw.users;
+    if (Array.isArray(raw.users)) return raw.users;
     return [];
+  },
+
+  readLocalUsers() {
+    return this.usersFrom(this.readJson(localStorage, this.usersKey));
   },
 
   readDraft() {
@@ -39,9 +45,29 @@ const Store = {
   },
 
   readDraftUsers() {
-    const local = this.readJson(localStorage, this.key);
-    const session = this.readJson(sessionStorage, this.key);
-    return [].concat((local && local.users) || [], (session && session.users) || []);
+    const out = [];
+    (this.legacyDraftKeys || [this.key]).forEach((key) => {
+      const local = this.readJson(localStorage, key);
+      const session = this.readJson(sessionStorage, key);
+      if (local && local.users) out.push.apply(out, local.users);
+      if (session && session.users) out.push.apply(out, session.users);
+    });
+    return out;
+  },
+
+  readSavedRemovedIds() {
+    const raw = this.readJson(localStorage, this.removedKey);
+    return Array.isArray(raw) ? raw : [];
+  },
+
+  persistRemovedIds() {
+    try {
+      localStorage.setItem(this.removedKey, JSON.stringify(this.removedIds || []));
+    } catch (_) { /* private mode / quota */ }
+  },
+
+  collectLocalUsers() {
+    return this.mergeUsers(this.readLocalUsers(), this.readDraftUsers());
   },
 
   personNameKey(p) {
@@ -123,7 +149,7 @@ const Store = {
     lists.forEach((list) => {
       (list || []).forEach((u) => {
         if (!u || !u.id) return;
-        if ((this.removedIds || []).indexOf(u.id) >= 0) return;
+        if (u.id !== "u-admin" && (this.removedIds || []).indexOf(u.id) >= 0) return;
         byId[u.id] = this.preferUser(byId[u.id], u);
       });
     });
@@ -149,28 +175,32 @@ const Store = {
   },
 
   allUsers() {
-    const draft = this.readDraft();
     return this.mergeUsers(
       this.data && this.data.users,
-      this.readLocalUsers(),
-      draft && draft.users,
+      this.collectLocalUsers(),
       this._remoteUsers
     );
   },
 
   persistUsers() {
+    if (!this.data) this.data = this.empty();
+    const merged = this.mergeUsers(this.data.users, this.collectLocalUsers());
+    this.data.users = merged;
     try {
-      localStorage.setItem(this.usersKey, JSON.stringify(this.data.users || []));
+      localStorage.setItem(this.usersKey, JSON.stringify(merged));
     } catch (_) { /* private mode / quota */ }
+    this.persistRemovedIds();
+    return merged;
   },
 
   rememberUser(person) {
     if (!person || !person.id) return;
-    this.data.users = this.mergeUsers(this.data.users, [person], this.readLocalUsers());
+    if (!this.data) this.data = this.empty();
+    this.data.users = this.mergeUsers(this.data.users, [person], this.collectLocalUsers());
     this.persistUsers();
   },
 
-  applyFamilySlice(slice) {
+  applyFamilySlice(slice, opts) {
     if (!slice || typeof slice !== "object") return;
     const keys = ["bookings", "reviews", "places", "expenses", "maintenance", "comments", "owners", "contacts", "ideas", "checklistRecords", "schoolHolidays"];
     keys.forEach((key) => {
@@ -184,8 +214,11 @@ const Store = {
       if (salt) this.data.settings.houseCodeSalt = salt;
       if (hash) this.data.settings.houseCodeHash = hash;
     }
-    if (Array.isArray(slice.removedIds)) {
-      this.removedIds = (this.removedIds || []).concat(slice.removedIds);
+    const applyRemoved = !opts || opts.applyRemoved !== false;
+    if (applyRemoved && Array.isArray(slice.removedIds) && slice.removedIds.length) {
+      if ((slice.users || []).length || opts.forceRemoved) {
+        this.removedIds = (this.removedIds || []).concat(slice.removedIds);
+      }
     }
   },
 
@@ -203,6 +236,8 @@ const Store = {
   },
 
   async load() {
+    const keptUsers = this.collectLocalUsers();
+    this.removedIds = this.readSavedRemovedIds();
     let repo = null;
     try {
       const res = await fetch("data/house.json", { cache: "no-store" });
@@ -216,25 +251,28 @@ const Store = {
       salt: (this.data.settings && this.data.settings.houseCodeSalt) || "",
       hash: (this.data.settings && this.data.settings.houseCodeHash) || ""
     };
-    try {
-      localStorage.removeItem("tfh-pending");
-      sessionStorage.removeItem("tfh-draft-v2");
-    } catch (_) { /* private mode */ }
     const draft = this.readDraft();
     if (draft && draft.version) {
-      this.applyFamilySlice(draft);
+      this.applyFamilySlice(draft, { applyRemoved: false });
       this.source = "local";
     }
     this._remoteUsers = [];
+    let remote = null;
     if (window.FamilySync) {
       await FamilySync.init();
-      const remote = await FamilySync.pull();
+      remote = await FamilySync.pull();
       if (remote) {
         this._remoteUsers = remote.users || [];
-        this.applyFamilySlice(remote);
+        this.applyFamilySlice(remote, { applyRemoved: true });
       }
     }
-    this.data.users = this.mergeUsers(repoUsers, this.readLocalUsers(), draft && draft.users, this._remoteUsers, this.data.users);
+    this.data.users = this.mergeUsers(
+      repoUsers,
+      keptUsers,
+      draft && draft.users,
+      this._remoteUsers,
+      this.data.users
+    );
     this.persistUsers();
     this.writeLocalDraft();
     this.dirty = false;
@@ -243,6 +281,9 @@ const Store = {
       this.data.settings = this.data.settings || {};
       this.data.settings.houseCodeSalt = repoHouse.salt;
       this.data.settings.houseCodeHash = repoHouse.hash;
+    }
+    if (remote || keptUsers.length || (this.data.users || []).length > 1) {
+      this.pushRemote().catch(() => {});
     }
     return this.data;
   },
@@ -271,8 +312,8 @@ const Store = {
     const remote = await FamilySync.pull();
     if (!remote) return;
     this._remoteUsers = remote.users || [];
-    this.applyFamilySlice(remote);
-    this.data.users = this.mergeUsers(this.data.users, this._remoteUsers, this.readLocalUsers());
+    this.applyFamilySlice(remote, { applyRemoved: true });
+    this.data.users = this.mergeUsers(this.data.users, this._remoteUsers, this.collectLocalUsers());
     this.persistUsers();
   },
 
@@ -294,6 +335,7 @@ const Store = {
       const remote = await FamilySync.pull();
       if (remote) this._remoteUsers = remote.users || [];
       const local = FamilySync.familySlice(this.data);
+      local.users = this.mergeUsers(local.users, this.collectLocalUsers(), this._remoteUsers);
       local.removedIds = this.removedIds || [];
       const merged = {
         users: this.mergeUsers(remote && remote.users, local.users),
@@ -338,7 +380,7 @@ const Store = {
     this.data.pendingUsers = [];
     this.data.settings = this.data.settings || {};
     this.data.settings.updatedAt = new Date().toISOString();
-    this.data.users = this.mergeUsers(this.data.users, this.readLocalUsers());
+    this.data.users = this.mergeUsers(this.data.users, this.collectLocalUsers());
     this.dirty = false;
     this.persistUsers();
     this.writeLocalDraft();

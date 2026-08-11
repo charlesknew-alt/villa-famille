@@ -2095,7 +2095,9 @@ const App = {
       Store.data.users = Store.allUsers().filter((u) => u.id !== id);
       Store.data.owners = (Store.data.owners || []).filter((o) => o.id !== id);
       Store.persistUsers();
+      Store.persistRemovedIds();
       Store.save();
+      Store.pushRemote().catch(() => {});
       this.renderSettings();
     });
   },

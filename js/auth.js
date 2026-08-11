@@ -99,8 +99,10 @@ const Auth = {
     const user = await Store.findUserByPin(clean);
     if (user) {
       this.setSession(user);
+      Store.rememberUser(user);
       Store.log("login", "user", user.id, user.name + " signed in");
       Store.save();
+      Store.pushRemote().catch(() => {});
       return { ok: true, user };
     }
     const fail = this.recordFail();
