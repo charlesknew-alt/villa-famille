@@ -1,0 +1,5 @@
+﻿id,category,amount,currency,date,supplier,notes,issueId
+e-1,maintenance,186,EUR,2026-06-18,Électricité du Golfe,Terrace light fitting,m-light
+e-2,cleaning,140,EUR,2026-08-08,Maison Claire,Changeover clean,
+e-3,utilities,92,EUR,2026-07-31,EDF,July electricity,
+e-4,improvements,420,EUR,2026-04-12,Jardin des Maures,New olive and drip line,

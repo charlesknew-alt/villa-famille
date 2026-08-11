@@ -1,0 +1,15 @@
+﻿id,name,business,category,phone,email,notes,lastUsed
+c-pool,Luc Moreau,Azur Piscines,pool,+33 6 12 34 56 01,luc@azurpiscines.example,Weekly chemistry and robot. Knows our timer.,2026-08-05
+c-clean,Marie Blanc,Maison Claire,cleaner,+33 6 12 34 56 02,marie@maisonclaire.example,Changeover cleans. Prefers morning slots.,2026-08-08
+c-elec,Paul Rossi,Électricité du Golfe,electrician,+33 6 12 34 56 03,paul@elecgolfe.example,Fuse board and outdoor lights.,2026-06-18
+c-plumb,Henri Vidal,Plomberie Vidal,plumber,+33 6 12 34 56 04,henri@vidal.example,Stopcock and pool plant room.,2026-04-02
+c-garden,Nadia Costa,Jardins des Maures,gardener,+33 6 12 34 56 05,nadia@jardinsmaures.example,Monthly visit. Watering in heatwaves.,2026-08-01
+c-build,Antoine Perez,Perez Bâtiment,builder,+33 6 12 34 56 06,antoine@perezb.example,"Shutters, terrace repairs.",2026-03-20
+c-pm,Élise Fournier,Golfe Property,manager,+33 6 12 34 56 07,elise@golfeproperty.example,First call if you cannot reach family.,2026-08-08
+c-112,Emergency (EU),112,emergency,112,,Works from any phone. English possible.,
+c-15,SAMU ambulance,15,emergency,15,,Medical emergency.,
+c-18,Pompiers / fire,18,emergency,18,,"Fire, accidents, rescue.",
+c-17,Police / gendarmerie,17,emergency,17,,Police emergency.,
+c-hosp,Centre Hospitalier de Saint-Tropez,Hospital (Gassin),hospital,+33 4 94 55 85 00,,"Closest hospital. 200 Chemin de l'Enclos, 83580 Gassin.",
+c-enedis,Enedis,Electricity network,utility,09 72 67 50 83,,Power cut reporting.,
+c-grdf,GRDF,Gas network,utility,0 800 47 33 33,,"Smell of gas: leave the house, then call.",

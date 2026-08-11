@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#4f5d3a" />
+  <meta name="description" content="The Family House — private family holiday house in the South of France" />
+  <title>The Family House</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect fill='%234f5d3a' width='64' height='64' rx='12'/%3E%3Cpath fill='%23f6f0e6' d='M12 34 L32 16 L52 34 V52 H12Z'/%3E%3Crect fill='%23c25b3c' x='28' y='38' width='8' height='14'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="boot-screen" class="boot-screen">
+    <div class="boot-mark" aria-hidden="true"></div>
+    <p>Opening the house…</p>
+  </div>
+
+  <div id="login-screen" class="login-screen" hidden>
+    <div class="login-card">
+      <div class="login-brand">
+        <svg class="villa-mark" viewBox="0 0 72 72" aria-hidden="true">
+          <rect class="villa-sky" x="0" y="0" width="72" height="72" rx="18"/>
+          <path class="villa-roof" d="M10 34 L36 14 L62 34 V36 H10Z"/>
+          <rect class="villa-wall" x="16" y="34" width="40" height="24" rx="2"/>
+          <rect class="villa-door" x="32" y="42" width="8" height="16"/>
+          <rect class="villa-win" x="21" y="40" width="7" height="7"/>
+          <rect class="villa-win" x="44" y="40" width="7" height="7"/>
+        </svg>
+        <p class="eyebrow">South of France</p>
+        <h1>The Family House</h1>
+        <p class="login-sub">A family house near La Croix-Valmer, on the Gulf of Saint-Tropez. Enter your PIN to come in.</p>
+      </div>
+
+      <div id="lockout-banner" class="lockout-banner" hidden></div>
+      <p id="pin-error" class="pin-error" hidden></p>
+
+      <div class="pin-display" aria-live="polite">
+        <span class="pin-label">Your PIN</span>
+        <div id="pin-dots" class="pin-dots"></div>
+      </div>
+
+      <div id="pin-pad" class="pin-pad" role="group" aria-label="PIN keypad"></div>
+
+      <p class="demo-pins">
+        Family setup — demo PINs: Admin <strong>123456</strong> (House Admin) ·
+        Family <strong>246810</strong> (Claire) · Guest <strong>135790</strong> (Guest)
+      </p>
+    </div>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" type="button">
+        <span></span><span></span><span></span>
+      </button>
+      <a class="brand" href="#dashboard">
+        <svg class="villa-mark sm" viewBox="0 0 72 72" aria-hidden="true">
+          <rect class="villa-sky" x="0" y="0" width="72" height="72" rx="18"/>
+          <path class="villa-roof" d="M10 34 L36 14 L62 34 V36 H10Z"/>
+          <rect class="villa-wall" x="16" y="34" width="40" height="24" rx="2"/>
+          <rect class="villa-door" x="32" y="42" width="8" height="16"/>
+          <rect class="villa-win" x="21" y="40" width="7" height="7"/>
+          <rect class="villa-win" x="44" y="40" width="7" height="7"/>
+        </svg>
+        <span>
+          <strong>The Family House</strong>
+          <em>La Croix-Valmer</em>
+        </span>
+      </a>
+      <form class="top-search" id="global-search-form">
+        <label class="sr-only" for="global-search">Search the house</label>
+        <input id="global-search" type="search" placeholder="Search the house…" autocomplete="off" />
+      </form>
+      <div class="top-actions">
+        <button type="button" id="save-banner-btn" class="save-chip" hidden>Save</button>
+        <button type="button" id="theme-toggle" class="icon-btn" aria-label="Toggle dark mode">☾</button>
+        <div class="who" id="who-chip"></div>
+        <button type="button" id="logout-btn" class="text-btn">Sign out</button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidenav" id="sidenav">
+        <nav>
+          <a href="#dashboard" data-nav="dashboard">Home</a>
+          <a href="#calendar" data-nav="calendar">Calendar</a>
+          <a href="#maintenance" data-nav="maintenance">Maintenance</a>
+          <a href="#house" data-nav="house">House</a>
+          <a href="#travel" data-nav="travel">Travel</a>
+          <a href="#restaurants" data-nav="restaurants">Food</a>
+          <a href="#ideas" data-nav="ideas">Ideas</a>
+          <a href="#announcements" data-nav="announcements">News</a>
+          <a href="#settings" data-nav="settings">Settings</a>
+        </nav>
+        <p class="nav-note">House data lives in the GitHub repo — not on this computer.</p>
+      </aside>
+      <main id="view" class="view"></main>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+  <script src="data/house-data.js"></script>
+  <script src="data/fares-data.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="lib/flights.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
