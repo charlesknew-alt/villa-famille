@@ -58,7 +58,6 @@ const App = {
     document.getElementById("app").hidden = false;
     const u = Auth.user();
     document.getElementById("who-chip").textContent = u.name + " · " + u.role;
-    Store.syncPending();
     this.syncSaveChip();
     this.route();
   },
@@ -79,6 +78,7 @@ const App = {
       if (k === "clear") this.pin = this.pin.slice(0, -1);
       else if (k === "ok") {
         if (this.pin.length === 4) await this.submitPin();
+        else this.showPinError("PIN must be 4 digits.");
       } else if (this.pin.length < 4) {
         this.pin += k;
         this.drawDots();
@@ -123,6 +123,13 @@ const App = {
     setTimeout(() => this.tickLock(), 1000);
   },
 
+  showPinError(msg) {
+    const err = document.getElementById("pin-error");
+    if (!err) return;
+    err.hidden = false;
+    err.textContent = msg;
+  },
+
   async submitPin() {
     const err = document.getElementById("pin-error");
     err.hidden = true;
@@ -141,7 +148,6 @@ const App = {
   showLoginPanels(which) {
     document.getElementById("login-pin-panel").hidden = which !== "pin";
     document.getElementById("login-signup-panel").hidden = which !== "signup";
-    document.getElementById("login-signup-done").hidden = which !== "done";
   },
 
   bindSignup() {
@@ -155,20 +161,6 @@ const App = {
     document.querySelectorAll("[data-login-back]").forEach((b) => {
       b.onclick = () => this.showLoginPanels("pin");
     });
-    const copyBtn = document.getElementById("copy-slip-btn");
-    if (copyBtn) copyBtn.onclick = async () => {
-      const slip = document.getElementById("signup-slip");
-      const text = slip ? slip.value : "";
-      if (!text) return UI.toast("No slip to copy yet.");
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
-        else { slip.focus(); slip.select(); document.execCommand("copy"); }
-        UI.toast("Slip copied. Admin can paste it under Approvals.");
-      } catch (_) {
-        if (slip) { slip.focus(); slip.select(); }
-        UI.toast("Copy failed — select the slip and copy it.");
-      }
-    };
     if (form) form.onsubmit = (e) => {
       e.preventDefault();
       this.submitSignup(form);
@@ -186,16 +178,14 @@ const App = {
 
   nameTaken(first, last) {
     const key = this.normName(first, last);
-    const users = Store.data.users || [];
-    const pending = Store.syncPending();
-    return users.some((u) => this.personNameKey(u) === key) ||
-      pending.some((p) => this.personNameKey(p) === key);
+    return (Store.data.users || []).some((u) => this.personNameKey(u) === key);
   },
 
   async submitSignup(form) {
-    const first = UI.val(form, "firstName");
-    const last = UI.val(form, "lastName");
+    const first = UI.val(form, "firstName").trim();
+    const last = UI.val(form, "lastName").trim();
     const pin = UI.val(form, "pin").replace(/\D/g, "");
+    const houseCode = UI.val(form, "houseCode").replace(/\D/g, "");
     const err = document.getElementById("signup-error");
     const btn = form.querySelector('button[type="submit"]');
     const showErr = (msg) => {
@@ -206,37 +196,32 @@ const App = {
     try {
       if (!first || !last) return showErr("Please enter your name and surname.");
       if (!/^\d{4}$/.test(pin)) return showErr("PIN must be 4 digits.");
-      if (this.nameTaken(first, last)) return showErr("That name already has an account or a request waiting.");
+      if (!(await Store.checkHouseCode(houseCode))) return showErr("That house code is not right.");
+      if (this.nameTaken(first, last)) return showErr("That name is already registered.");
       const salt = CryptoUtil.randomSalt();
-      const id = CryptoUtil.uid("p");
+      const now = new Date().toISOString();
       const person = {
-        id,
+        id: CryptoUtil.uid("u"),
         firstName: first,
         lastName: last,
         name: first + " " + last,
+        role: "family",
         pinSalt: salt,
         pinHash: await CryptoUtil.hashPin(pin, salt),
-        requestedAt: new Date().toISOString()
+        createdAt: now,
+        createdBy: "signup"
       };
-      Store.log("request", "user", "", person.name + " asked for a PIN");
-      Store.addPending(person);
-      const code = String(first).replace(/\s+/g, "").toUpperCase() + "-" + id.slice(-2).toUpperCase();
-      const slip = JSON.stringify(person);
-      const codeEl = document.getElementById("signup-code");
-      if (codeEl) {
-        codeEl.innerHTML = "Request code: <b>" + UI.esc(code) + "</b>. Ask the admin to open Approvals on this phone, or copy this slip for another computer.";
-      }
-      const slipBox = document.getElementById("signup-slip");
-      if (slipBox) slipBox.value = slip;
+      Store.data.users.push(person);
+      Store.addOwner(person);
+      Auth.setSession(person);
+      Store.log("create", "user", person.id, person.name + " created a PIN");
+      Store.save();
       form.reset();
-      this.showLoginPanels("done");
-      UI.toast("Request sent. Ask the admin to open Approvals.");
-      Store.tryPushIfAuthed().then((ok) => {
-        Store.syncPending();
-        if (ok) UI.toast("Request also saved to the house file.");
-      }).catch(() => {});
+      this.showApp();
+      UI.toast("Welcome, " + person.name);
+      Store.tryPushIfAuthed().catch(() => {});
     } catch (ex) {
-      showErr((ex && ex.message) ? ex.message : "Could not send the request. Please try again.");
+      showErr((ex && ex.message) ? ex.message : "Could not create your PIN. Please try again.");
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -1407,7 +1392,6 @@ const App = {
   },
 
   renderSettings() {
-    Store.syncPending();
     const acts = Store.data.activity.slice(0, 40);
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", "PINs, backup, and activity") +
@@ -1428,7 +1412,7 @@ const App = {
       '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille" value="' + UI.esc((Store.ghCreds() || {}).repo || "") + '"></label>' +
       '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off" placeholder="' + ((Store.ghCreds() || {}).token ? "Token saved in this browser" : "") + '"></label><button class="btn">Save to GitHub</button></form></div>' +
       this.schoolFamilyCard() +
-      (Auth.isAdmin() ? this.approvalsCard() + this.pinAdmin() + this.schoolHolidaysCard() : "") +
+      (Auth.isAdmin() ? this.houseCodeNote() + this.pinAdmin() + this.schoolHolidaysCard() : "") +
       '<div class="card" style="margin-top:16px"><h3>Activity</h3>' +
       acts.map((a) => "<div class='row'><div><b>" + UI.esc(a.action) + "</b> " + UI.esc(a.entity) + "<div class='muted'>" + UI.esc(a.detail) + " · " + UI.esc(Store.userName(a.userId)) + "</div></div><span class='muted'>" + UI.fmtTime(a.at) + "</span></div>").join("") +
       "</div>";
@@ -1451,7 +1435,6 @@ const App = {
       Store.setGhCreds(token, repo);
       try {
         await Store.saveToGitHub(token, parts[0], parts[1], "main");
-        Store.syncPending();
         UI.toast("Saved to GitHub");
       } catch (err) { UI.toast(err.message); }
     };
@@ -1544,23 +1527,15 @@ const App = {
     };
   },
 
-  approvalsCard() {
-    const pending = Store.syncPending();
-    return '<div class="card" style="margin-top:16px"><h3>Approvals</h3>' +
-      '<p class="muted">People who asked for a PIN on this phone show here at once. If someone signed up on another phone, their request stays on that phone until this file is saved to GitHub — or paste their slip below. You can also Add person with a 4-digit PIN.</p>' +
-      (pending.length ? pending.map((p) => "<div class='row'><div><b>" + UI.esc(p.name) + "</b><div class='muted'>Asked " + UI.esc(UI.fmtTime(p.requestedAt)) +
-        (p.id ? " · " + UI.esc(String(p.firstName || p.name || "").replace(/\s+/g, "").toUpperCase() + "-" + String(p.id).slice(-2).toUpperCase()) : "") +
-        "</div></div>" +
-        "<span class='actions'><button class='btn primary' type='button' data-approve='" + p.id + "'>Approve</button><button class='btn' type='button' data-decline='" + p.id + "'>Decline</button></span></div>").join("") :
-        "<p class='muted'>No one is waiting on this phone.</p>") +
-      '<form id="slip-form" style="margin-top:12px"><label class="field"><span>Add a request from a phone</span><textarea name="slip" rows="3" placeholder="Paste the request slip"></textarea></label>' +
-      '<button class="btn" type="submit">Add request</button></form></div>';
+  houseCodeNote() {
+    return '<div class="card" style="margin-top:16px"><h3>House code</h3>' +
+      '<p class="muted">Family use this on <b>Create your PIN</b>. It is not shown on the login screen.</p>' +
+      "<p>Verify code: <b>302011</b></p></div>";
   },
 
   pinAdmin() {
-    return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3><p class="muted">PINs are stored as SHA-256 + salt. Raw PINs are never saved.</p>' +
+    return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3><p class="muted">PINs are stored as SHA-256 + salt. Raw PINs are never saved. Same name cannot be added twice.</p>' +
       Store.data.users.map((u) => "<div class='row'><div><b>" + UI.esc(u.name) + "</b><div class='muted'>" + u.role +
-        (u.approvedBy ? " · approved by " + UI.esc(Store.userName(u.approvedBy)) + (u.approvedAt ? " · " + UI.fmtTime(u.approvedAt) : "") : "") +
         "</div><label class='field' style='margin:8px 0 0'><span>School children</span><select data-school='" + u.id + "'>" +
         this.schoolOptions(u.schoolId || "") + "</select></label></div>" +
         (u.id !== Auth.user().id ? "<button class='text-btn' data-delu='" + u.id + "'>Remove</button>" : "") + "</div>").join("") +
@@ -1574,12 +1549,15 @@ const App = {
     if (f) f.onsubmit = async (e) => {
       e.preventDefault();
       const pin = UI.val(f, "pin").replace(/\D/g, "");
+      const name = UI.val(f, "name").trim();
+      if (!name) return UI.toast("Please enter a name");
       if (!/^\d{4}$/.test(pin)) return UI.toast("PIN must be 4 digits");
+      if (this.nameTaken(name, "")) return UI.toast("That name is already registered.");
       const salt = CryptoUtil.randomSalt();
-      const person = { id: CryptoUtil.uid("u"), name: UI.val(f, "name"), role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id };
+      const person = { id: CryptoUtil.uid("u"), name: name, role: UI.val(f, "role"), pinSalt: salt, pinHash: await CryptoUtil.hashPin(pin, salt), createdAt: new Date().toISOString(), createdBy: Auth.user().id };
       Store.data.users.push(person);
       Store.addOwner(person);
-      Store.log("create", "user", "", UI.val(f, "name"));
+      Store.log("create", "user", person.id, name);
       Store.save();
       UI.toast("Person added");
       this.renderSettings();
@@ -1592,55 +1570,6 @@ const App = {
       Store.save();
       this.renderSettings();
     });
-    document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => this.approvePending(b.getAttribute("data-approve")));
-    document.querySelectorAll("[data-decline]").forEach((b) => b.onclick = () => this.declinePending(b.getAttribute("data-decline")));
-    const slipForm = document.getElementById("slip-form");
-    if (slipForm) slipForm.onsubmit = (e) => {
-      e.preventDefault();
-      try {
-        const person = Store.importPendingSlip(UI.val(slipForm, "slip"));
-        UI.toast((person.name || "Request") + " added to Approvals");
-        this.renderSettings();
-      } catch (err) { UI.toast(err.message || "Could not add that request"); }
-    };
-  },
-
-  approvePending(id) {
-    if (!Auth.isAdmin()) return;
-    const pending = Store.syncPending().find((p) => p.id === id);
-    if (!pending) return;
-    const admin = Auth.user();
-    const now = new Date().toISOString();
-    const person = {
-      id: CryptoUtil.uid("u"),
-      name: pending.name,
-      firstName: pending.firstName,
-      lastName: pending.lastName,
-      role: "family",
-      pinSalt: pending.pinSalt,
-      pinHash: pending.pinHash,
-      createdAt: now,
-      createdBy: admin.id,
-      approvedBy: admin.id,
-      approvedAt: now
-    };
-    Store.data.users.push(person);
-    Store.addOwner(person);
-    Store.removePending(id);
-    Store.log("approve", "user", "", admin.name + " approved " + pending.name);
-    Store.save();
-    UI.toast(pending.name + " can now sign in");
-    this.renderSettings();
-  },
-
-  declinePending(id) {
-    if (!Auth.isAdmin()) return;
-    const pending = Store.syncPending().find((p) => p.id === id);
-    Store.removePending(id);
-    Store.log("decline", "user", "", (pending && pending.name) || id);
-    Store.save();
-    UI.toast("Request declined");
-    this.renderSettings();
   },
 
   openSave() {

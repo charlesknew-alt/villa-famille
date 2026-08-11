@@ -15,6 +15,13 @@ const Auth = {
     return this.current;
   },
 
+  setSession(user) {
+    this.current = user;
+    localStorage.setItem(this.sessionKey, user.id);
+    this.recordOk();
+    return user;
+  },
+
   logout() {
     this.current = null;
     localStorage.removeItem(this.sessionKey);
@@ -58,10 +65,7 @@ const Auth = {
     for (const user of Store.data.users || []) {
       const hash = await CryptoUtil.hashPin(clean, user.pinSalt);
       if (hash === user.pinHash) {
-        this.current = user;
-        localStorage.setItem(this.sessionKey, user.id);
-        this.recordOk();
-        Store.syncPending();
+        this.setSession(user);
         Store.log("login", "user", user.id, user.name + " signed in");
         Store.save();
         return { ok: true, user };

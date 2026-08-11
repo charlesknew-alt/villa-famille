@@ -1,6 +1,5 @@
 const Store = {
-  key: "tfh-draft-v2",
-  pendingKey: "tfh-pending",
+  key: "tfh-draft-v3",
   ghKey: "tfh-gh",
   data: null,
   dirty: false,
@@ -27,7 +26,14 @@ const Store = {
     if (!repo && window.HOUSE_DATA) repo = window.HOUSE_DATA;
     this.data = Object.assign(this.empty(), repo || {});
     this.normalize();
-    const repoPending = (this.data.pendingUsers || []).slice();
+    const repoHouse = {
+      salt: (this.data.settings && this.data.settings.houseCodeSalt) || "",
+      hash: (this.data.settings && this.data.settings.houseCodeHash) || ""
+    };
+    try {
+      localStorage.removeItem("tfh-pending");
+      sessionStorage.removeItem("tfh-draft-v2");
+    } catch (_) { /* private mode */ }
     const draft = sessionStorage.getItem(this.key);
     if (draft) {
       try {
@@ -40,17 +46,25 @@ const Store = {
       } catch (_) { /* ignore bad draft */ }
     }
     this.normalize();
-    this.mergePending(repoPending);
-    this.mergePending(this.readLocalPending());
-    this.mergePending(this.readDraftPending());
-    this.persistPending(true);
+    if (repoHouse.hash) {
+      this.data.settings = this.data.settings || {};
+      this.data.settings.houseCodeSalt = repoHouse.salt;
+      this.data.settings.houseCodeHash = repoHouse.hash;
+    }
     return this.data;
   },
 
+  async checkHouseCode(code) {
+    const clean = String(code || "").replace(/\D/g, "");
+    const salt = this.data && this.data.settings && this.data.settings.houseCodeSalt;
+    const expected = this.data && this.data.settings && this.data.settings.houseCodeHash;
+    if (!salt || !expected || !clean) return false;
+    const hash = await CryptoUtil.hashPin(clean, salt);
+    return hash === expected;
+  },
+
   save() {
-    this.data.pendingUsers = this.data.pendingUsers || [];
-    this.mergePending(this.readLocalPending());
-    this.persistPending(true);
+    this.data.pendingUsers = [];
     this.data.settings = this.data.settings || {};
     this.data.settings.updatedAt = new Date().toISOString();
     this.dirty = true;
@@ -63,80 +77,6 @@ const Store = {
     this.dirty = false;
     this.source = "repo";
     if (window.App) App.syncSaveChip();
-  },
-
-  readLocalPending() {
-    try {
-      const raw = localStorage.getItem(this.pendingKey);
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list.filter((p) => p && p.id) : [];
-    } catch (_) { return []; }
-  },
-
-  readDraftPending() {
-    try {
-      const raw = sessionStorage.getItem(this.key);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const list = parsed && parsed.pendingUsers;
-      return Array.isArray(list) ? list.filter((p) => p && p.id) : [];
-    } catch (_) { return []; }
-  },
-
-  persistPending(replace) {
-    if (!replace) this.mergePending(this.readLocalPending());
-    try {
-      localStorage.setItem(this.pendingKey, JSON.stringify(this.data.pendingUsers || []));
-    } catch (_) { /* private mode */ }
-  },
-
-  mergePending(extra) {
-    const byId = {};
-    const add = (p) => {
-      if (!p || !p.id) return;
-      if (!byId[p.id]) byId[p.id] = p;
-    };
-    (this.data.pendingUsers || []).forEach(add);
-    (extra || []).forEach(add);
-    this.data.pendingUsers = Object.keys(byId).map((k) => byId[k]);
-  },
-
-  syncPending() {
-    if (!this.data) this.data = this.empty();
-    this.data.pendingUsers = this.data.pendingUsers || [];
-    this.mergePending(this.readLocalPending());
-    this.mergePending(this.readDraftPending());
-    this.persistPending(true);
-    return this.data.pendingUsers;
-  },
-
-  addPending(person) {
-    this.syncPending();
-    this.mergePending([person]);
-    this.persistPending(true);
-    this.save();
-    return person;
-  },
-
-  importPendingSlip(text) {
-    const raw = String(text || "").trim();
-    if (!raw) throw new Error("Paste the request slip first.");
-    let obj = null;
-    try { obj = JSON.parse(raw); } catch (_) {
-      try { obj = JSON.parse(decodeURIComponent(escape(atob(raw)))); } catch (e) {
-        throw new Error("Could not read that request slip.");
-      }
-    }
-    if (Array.isArray(obj)) obj = obj[0];
-    if (!obj || !obj.id || !obj.pinHash || !obj.pinSalt) throw new Error("That slip is missing PIN details.");
-    obj.name = obj.name || ((obj.firstName || "") + " " + (obj.lastName || "")).trim();
-    this.addPending(obj);
-    return obj;
-  },
-
-  removePending(id) {
-    this.syncPending();
-    this.data.pendingUsers = (this.data.pendingUsers || []).filter((p) => p.id !== id);
-    this.persistPending(true);
   },
 
   ghCreds() {
@@ -179,7 +119,8 @@ const Store = {
   normalize() {
     const d = this.data;
     d.users = d.users || [];
-    d.pendingUsers = d.pendingUsers || [];
+    d.pendingUsers = [];
+    d.settings = d.settings || {};
     d.activity = d.activity || [];
     d.bookings = d.bookings || [];
     d.places = d.places || [];

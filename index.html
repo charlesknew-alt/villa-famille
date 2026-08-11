@@ -42,7 +42,7 @@
 
         <div id="pin-pad" class="pin-pad" role="group" aria-label="PIN keypad"></div>
 
-        <p class="demo-pins">New here? Create your PIN and ask the house admin to approve you.</p>
+        <p class="demo-pins">New here? Create your PIN to join the house.</p>
 
         <button type="button" class="btn primary create-pin-btn" id="show-signup-btn">Create your PIN</button>
         <p class="how-runs">This file is the house — open it in a browser. The GitHub page is only the code locker, not a live website. The calendar lives in <b>data/house.json</b>. New bookings first save as a draft in this browser; then download that file and put it back on GitHub so the family sees the same dates.</p>
@@ -50,26 +50,16 @@
 
       <div id="login-signup-panel" hidden>
         <h2>Create your PIN</h2>
-        <p class="login-sub">Name, surname, and a 4-digit PIN. You will not get in yet — the house admin must approve you.</p>
+        <p class="login-sub">Name, surname, a 4-digit PIN, and the house code you were given.</p>
         <p id="signup-error" class="pin-error" hidden></p>
         <form id="signup-form" class="signup-fields">
           <label class="field"><span>Name</span><input name="firstName" autocomplete="given-name" required></label>
           <label class="field"><span>Surname</span><input name="lastName" autocomplete="family-name" required></label>
           <label class="field"><span>4-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required></label>
-          <button class="btn primary create-pin-btn" type="submit">Send request</button>
+          <label class="field"><span>House code</span><input name="houseCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required></label>
+          <button class="btn primary create-pin-btn" type="submit">Create PIN</button>
           <button class="btn create-pin-btn" type="button" data-login-back>Back to PIN</button>
         </form>
-      </div>
-
-      <div id="login-signup-done" hidden>
-        <div class="signup-done">
-          <h2>Almost there</h2>
-          <p>Ask the house admin to open Approvals on this same phone, or copy the slip below for another computer.</p>
-          <p id="signup-code" class="login-sub"></p>
-          <label class="field"><span>Request slip</span><textarea id="signup-slip" rows="3" readonly></textarea></label>
-          <button class="btn primary create-pin-btn" type="button" id="copy-slip-btn">Copy slip</button>
-          <button class="btn create-pin-btn" type="button" data-login-back>Back to PIN</button>
-        </div>
       </div>
     </div>
   </div>

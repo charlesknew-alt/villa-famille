@@ -547,6 +547,8 @@
   "announcements": [],
   "activity": [],
   "settings": {
-    "updatedAt": "2026-08-11T12:00:00.000Z"
+    "houseCodeSalt": "7f3c91e0a2b84d6e5c1a0f8b9d4e2763",
+    "houseCodeHash": "4a0e5666fc9db4c86cfd2316556547732ea84689757507aaa376347f0bd98794",
+    "updatedAt": "2026-08-11T14:15:00.000Z"
   }
 }

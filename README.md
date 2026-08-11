@@ -35,11 +35,9 @@ If a double-click does not load the house data, open a terminal in this folder a
 
 ## PINs (family setup)
 
-There is one house admin PIN to start. New people tap **Create your PIN** on the login screen (name, surname, 4-digit PIN). They do not get in yet. The house admin approves or declines the request in **Settings → Approvals**. Same first + last name cannot request twice.
+There is one house admin PIN to start. New people tap **Create your PIN** on the login screen (name, surname, 4-digit PIN, and the house verify code). They become a family member at once and are signed in. The same first + last name cannot be registered twice. The house code is not shown on the login screen.
 
-Signup requests are kept in `pendingUsers` and also in this browser’s `localStorage` (`tfh-pending`). Approvals and the signup form read that same merged list. That survives a refresh on the same phone. It cannot jump to another device by itself — copy the request slip and paste it under Approvals, or **Add person** with a 4-digit PIN.
-
-PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never saved. The login screen does not list family PINs.
+Admin can also **Add person** in Settings. Same name rule. PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never saved. The login screen does not list family PINs.
 
 ## What is in the app
 
