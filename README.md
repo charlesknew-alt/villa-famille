@@ -4,28 +4,36 @@ A simple family portal for a holiday house near **La Croix-Valmer** (Var, Gulf o
 
 No cloud database. No Supabase. No Google account. Open the site, enter a PIN, use the house.
 
-## Use it at home (or anywhere)
+## How to open this (not the GitHub file list)
 
-This project lives on **GitHub**, not on a work PC.
+The GitHub link is **only the code locker**. It shows source files. It is **not** the live house.
 
-1. Open the GitHub repo `villa-famille` in your account.
-2. Use **GitHub Pages** if it is enabled (Settings → Pages → Deploy from `main` / root).
-3. Or clone the repo at home and open `index.html` in a browser.  
-   If the house data does not load from a double-click (`file://`), start a tiny local server in this folder:
+**To use the house:**
 
-   ```bash
-   py -m http.server 8080
-   ```
+1. On GitHub, click **Code → Download ZIP** (or clone the repo).
+2. Unzip the folder.
+3. Double-click **`index.html`**. It opens in your browser.
+4. Enter a PIN.
 
-   Then visit http://localhost:8080
+There is no server on this PC. `index.html` is a website file. A browser opens it. Until the family has a web host, that is how you use the house.
+
+If a double-click does not load the house data, open a terminal in this folder and run `py -m http.server 8080`, then visit http://localhost:8080
+
+## How it runs, and where the calendar lives
+
+**How it runs:** Open `index.html` in a browser (or a web address later). GitHub is not the live house until someone opens that file or hosts it.
+
+**Where data lives:** Bookings, the calendar, people, maintenance, and expenses live in the repo file `data/house.json`. While you use the site, new bookings first save as a **draft in this browser**. Then go to Settings and download `house.json`, and put that file back on GitHub so the family at home sees the same calendar. Spreadsheet copies are in `data/csv/`.
 
 ## Demo PINs (family setup)
 
 | Role   | PIN    | Name        |
 |--------|--------|-------------|
-| Admin  | 123456 | House Admin |
+| Admin  | 077881 | House Admin |
 | Family | 246810 | Claire      |
 | Guest  | 135790 | Guest       |
+
+New people tap **Create your PIN** on the login screen (name, surname, 6-digit PIN). They do not get in yet. The house admin approves or declines the request in **Settings → Approvals**. Same first + last name cannot request twice.
 
 PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never saved.
 

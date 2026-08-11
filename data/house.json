@@ -13,7 +13,7 @@
       "name": "House Admin",
       "role": "admin",
       "pinSalt": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
-      "pinHash": "457a2ff654a76ac5a19ce5a4e04e5c54ad717e94712db4dc28d54c03d13c452b",
+      "pinHash": "b5557cb73d929dafefbfa23b405c97f960ed6c2fb5d071d137765fee27833393",
       "createdAt": "2025-01-10T10:00:00.000Z",
       "createdBy": "u-admin"
     },
@@ -36,6 +36,7 @@
       "createdBy": "u-admin"
     }
   ],
+  "pendingUsers": [],
   "owners": [
     { "id": "u-admin", "name": "House Admin" },
     { "id": "u-claire", "name": "Claire" },

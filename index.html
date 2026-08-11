@@ -31,20 +31,46 @@
         <p class="login-sub">A family house near La Croix-Valmer, on the Gulf of Saint-Tropez. Enter your PIN to come in.</p>
       </div>
 
-      <div id="lockout-banner" class="lockout-banner" hidden></div>
-      <p id="pin-error" class="pin-error" hidden></p>
+      <div id="login-pin-panel">
+        <div id="lockout-banner" class="lockout-banner" hidden></div>
+        <p id="pin-error" class="pin-error" hidden></p>
 
-      <div class="pin-display" aria-live="polite">
-        <span class="pin-label">Your PIN</span>
-        <div id="pin-dots" class="pin-dots"></div>
+        <div class="pin-display" aria-live="polite">
+          <span class="pin-label">Your PIN</span>
+          <div id="pin-dots" class="pin-dots"></div>
+        </div>
+
+        <div id="pin-pad" class="pin-pad" role="group" aria-label="PIN keypad"></div>
+
+        <p class="demo-pins">
+          Family setup — demo PINs: Admin <strong>077881</strong> (House Admin) ·
+          Family <strong>246810</strong> (Claire) · Guest <strong>135790</strong> (Guest)
+        </p>
+
+        <button type="button" class="btn primary create-pin-btn" id="show-signup-btn">Create your PIN</button>
+        <p class="how-runs">This file is the house — open it in a browser. The GitHub page is only the code locker, not a live website. The calendar lives in <b>data/house.json</b>. New bookings first save as a draft in this browser; then download that file and put it back on GitHub so the family sees the same dates.</p>
       </div>
 
-      <div id="pin-pad" class="pin-pad" role="group" aria-label="PIN keypad"></div>
+      <div id="login-signup-panel" hidden>
+        <h2>Create your PIN</h2>
+        <p class="login-sub">Name, surname, and a 6-digit PIN. You will not get in yet — the house admin must approve you.</p>
+        <p id="signup-error" class="pin-error" hidden></p>
+        <form id="signup-form" class="signup-fields">
+          <label class="field"><span>Name</span><input name="firstName" autocomplete="given-name" required></label>
+          <label class="field"><span>Surname</span><input name="lastName" autocomplete="family-name" required></label>
+          <label class="field"><span>6-digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+          <button class="btn primary create-pin-btn" type="submit">Send request</button>
+          <button class="btn create-pin-btn" type="button" data-login-back>Back to PIN</button>
+        </form>
+      </div>
 
-      <p class="demo-pins">
-        Family setup — demo PINs: Admin <strong>123456</strong> (House Admin) ·
-        Family <strong>246810</strong> (Claire) · Guest <strong>135790</strong> (Guest)
-      </p>
+      <div id="login-signup-done" hidden>
+        <div class="signup-done">
+          <h2>Almost there</h2>
+          <p>Ask the house admin to approve you.</p>
+          <button class="btn primary create-pin-btn" type="button" data-login-back>Back to PIN</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -93,7 +119,7 @@
           <a href="#announcements" data-nav="announcements">News</a>
           <a href="#settings" data-nav="settings">Settings</a>
         </nav>
-        <p class="nav-note">House data lives in the GitHub repo — not on this computer.</p>
+        <p class="nav-note">Calendar and bookings live in data/house.json on GitHub. This browser only holds a draft until you save that file back.</p>
       </aside>
       <main id="view" class="view"></main>
     </div>

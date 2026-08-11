@@ -10,6 +10,7 @@ const App = {
     this.cal.cursor = UI.today().slice(0, 7) + "-01";
     this.bindChrome();
     this.renderPinPad();
+    this.bindSignup();
     if (Auth.restore()) this.showApp();
     else this.showLogin();
     window.addEventListener("hashchange", () => this.route());
@@ -41,6 +42,7 @@ const App = {
     this.pin = "";
     this.drawDots();
     this.tickLock();
+    this.showLoginPanels("pin");
   },
 
   showApp() {
@@ -103,6 +105,72 @@ const App = {
     if (res.locked) this.tickLock();
     err.hidden = false;
     err.textContent = res.error || "Please try again.";
+  },
+
+  showLoginPanels(which) {
+    document.getElementById("login-pin-panel").hidden = which !== "pin";
+    document.getElementById("login-signup-panel").hidden = which !== "signup";
+    document.getElementById("login-signup-done").hidden = which !== "done";
+  },
+
+  bindSignup() {
+    const showBtn = document.getElementById("show-signup-btn");
+    const form = document.getElementById("signup-form");
+    if (showBtn) showBtn.onclick = () => {
+      const err = document.getElementById("signup-error");
+      if (err) err.hidden = true;
+      this.showLoginPanels("signup");
+    };
+    document.querySelectorAll("[data-login-back]").forEach((b) => {
+      b.onclick = () => this.showLoginPanels("pin");
+    });
+    if (form) form.onsubmit = (e) => {
+      e.preventDefault();
+      this.submitSignup(form);
+    };
+  },
+
+  normName(first, last) {
+    return (String(first || "") + " " + String(last || "")).trim().toLowerCase().replace(/\s+/g, " ");
+  },
+
+  personNameKey(p) {
+    if (p.firstName || p.lastName) return this.normName(p.firstName, p.lastName);
+    return this.normName(p.name || "", "");
+  },
+
+  nameTaken(first, last) {
+    const key = this.normName(first, last);
+    const users = Store.data.users || [];
+    const pending = Store.data.pendingUsers || [];
+    return users.some((u) => this.personNameKey(u) === key) ||
+      pending.some((p) => this.personNameKey(p) === key);
+  },
+
+  async submitSignup(form) {
+    const first = UI.val(form, "firstName");
+    const last = UI.val(form, "lastName");
+    const pin = UI.val(form, "pin").replace(/\D/g, "");
+    const err = document.getElementById("signup-error");
+    const showErr = (msg) => { err.hidden = false; err.textContent = msg; };
+    if (!first || !last) return showErr("Please enter your name and surname.");
+    if (!/^\d{6}$/.test(pin)) return showErr("PIN must be 6 digits.");
+    if (this.nameTaken(first, last)) return showErr("That name already has an account or a request waiting.");
+    const salt = CryptoUtil.randomSalt();
+    Store.data.pendingUsers = Store.data.pendingUsers || [];
+    Store.data.pendingUsers.push({
+      id: CryptoUtil.uid("p"),
+      firstName: first,
+      lastName: last,
+      name: first + " " + last,
+      pinSalt: salt,
+      pinHash: await CryptoUtil.hashPin(pin, salt),
+      requestedAt: new Date().toISOString()
+    });
+    Store.log("request", "user", "", first + " " + last + " asked for a PIN");
+    Store.save();
+    form.reset();
+    this.showLoginPanels("done");
   },
 
   route() {
@@ -1129,11 +1197,13 @@ const App = {
     const acts = Store.data.activity.slice(0, 40);
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", "PINs, backup, and activity") +
-      '<div class="card"><h3>How data works</h3><p>The real house file is <b>data/house.json</b> on GitHub. Changes you make here sit as a draft until you download that file (and the CSVs) and put them back in the repo. Optional: paste a GitHub token to save from the browser.</p>' +
+      '<div class="card"><h3>How this runs, and where the calendar lives</h3>' +
+      '<p>There is no server on this PC. <b>index.html</b> is a website file — open it in a browser. The GitHub page is only the code locker, not the live house.</p>' +
+      '<p>The real calendar, bookings, people, and the rest live in <b>data/house.json</b> on GitHub. While you use the site, new bookings first save as a <b>draft in this browser</b>. Then download that file and put it back on GitHub so the family at home sees the same dates. Spreadsheet copies are in <b>data/csv/</b>.</p>' +
       '<div class="actions"><button class="btn primary" id="dl-json">Download house.json</button><button class="btn" id="dl-csv">Download CSVs</button><label class="btn">Restore JSON<input type="file" id="up-json" accept="application/json" hidden></label></div></div>' +
       '<div class="card" style="margin-top:16px"><h3>Save to GitHub</h3><form id="gh-form"><label class="field"><span>Owner / repo</span><input name="repo" placeholder="yourname/villa-famille"></label>' +
       '<label class="field"><span>Token (repo contents)</span><input name="token" type="password" autocomplete="off"></label><button class="btn">Save to GitHub</button></form></div>' +
-      (Auth.isAdmin() ? this.pinAdmin() : "") +
+      (Auth.isAdmin() ? this.approvalsCard() + this.pinAdmin() : "") +
       '<div class="card" style="margin-top:16px"><h3>Activity</h3>' +
       acts.map((a) => "<div class='row'><div><b>" + UI.esc(a.action) + "</b> " + UI.esc(a.entity) + "<div class='muted'>" + UI.esc(a.detail) + " · " + UI.esc(Store.userName(a.userId)) + "</div></div><span class='muted'>" + UI.fmtTime(a.at) + "</span></div>").join("") +
       "</div>";
@@ -1158,18 +1228,29 @@ const App = {
     this.afterRender();
   },
 
+  approvalsCard() {
+    const pending = Store.data.pendingUsers || [];
+    return '<div class="card" style="margin-top:16px"><h3>Approvals</h3><p class="muted">People who asked for a PIN. Only the house admin can approve.</p>' +
+      (pending.length ? pending.map((p) => "<div class='row'><div><b>" + UI.esc(p.name) + "</b><div class='muted'>Asked " + UI.esc(UI.fmtTime(p.requestedAt)) + "</div></div>" +
+        "<span class='actions'><button class='btn primary' type='button' data-approve='" + p.id + "'>Approve</button><button class='btn' type='button' data-decline='" + p.id + "'>Decline</button></span></div>").join("") :
+        "<p class='muted'>No one is waiting.</p>") +
+      "</div>";
+  },
+
   pinAdmin() {
     return '<div class="card" style="margin-top:16px"><h3>Family PINs</h3><p class="muted">PINs are stored as SHA-256 + salt. Raw PINs are never saved.</p>' +
-      Store.data.users.map((u) => "<div class='row'><div><b>" + UI.esc(u.name) + "</b><div class='muted'>" + u.role + "</div></div>" +
+      Store.data.users.map((u) => "<div class='row'><div><b>" + UI.esc(u.name) + "</b><div class='muted'>" + u.role +
+        (u.approvedBy ? " · approved by " + UI.esc(Store.userName(u.approvedBy)) + (u.approvedAt ? " · " + UI.fmtTime(u.approvedAt) : "") : "") +
+        "</div></div>" +
         (u.id !== Auth.user().id ? "<button class='text-btn' data-delu='" + u.id + "'>Remove</button>" : "") + "</div>").join("") +
       '<form id="pin-form"><div class="field-row"><input name="name" placeholder="Name" required><select name="role"><option value="family">Family</option><option value="guest">Guest</option><option value="admin">Admin</option></select></div>' +
       '<label class="field"><span>New 4–6 digit PIN</span><input name="pin" inputmode="numeric" pattern="[0-9]{4,6}" required></label><button class="btn">Add person</button></form></div>';
   },
 
   bindPinAdmin() {
+    if (!Auth.isAdmin()) return;
     const f = document.getElementById("pin-form");
-    if (!f) return;
-    f.onsubmit = async (e) => {
+    if (f) f.onsubmit = async (e) => {
       e.preventDefault();
       const pin = UI.val(f, "pin");
       if (!/^\d{4,6}$/.test(pin)) return UI.toast("PIN must be 4–6 digits");
@@ -1186,6 +1267,44 @@ const App = {
       Store.save();
       this.renderSettings();
     });
+    document.querySelectorAll("[data-approve]").forEach((b) => b.onclick = () => this.approvePending(b.getAttribute("data-approve")));
+    document.querySelectorAll("[data-decline]").forEach((b) => b.onclick = () => this.declinePending(b.getAttribute("data-decline")));
+  },
+
+  approvePending(id) {
+    if (!Auth.isAdmin()) return;
+    const pending = (Store.data.pendingUsers || []).find((p) => p.id === id);
+    if (!pending) return;
+    const admin = Auth.user();
+    const now = new Date().toISOString();
+    Store.data.users.push({
+      id: CryptoUtil.uid("u"),
+      name: pending.name,
+      firstName: pending.firstName,
+      lastName: pending.lastName,
+      role: "family",
+      pinSalt: pending.pinSalt,
+      pinHash: pending.pinHash,
+      createdAt: now,
+      createdBy: admin.id,
+      approvedBy: admin.id,
+      approvedAt: now
+    });
+    Store.data.pendingUsers = Store.data.pendingUsers.filter((p) => p.id !== id);
+    Store.log("approve", "user", "", admin.name + " approved " + pending.name);
+    Store.save();
+    UI.toast(pending.name + " can now sign in");
+    this.renderSettings();
+  },
+
+  declinePending(id) {
+    if (!Auth.isAdmin()) return;
+    const pending = (Store.data.pendingUsers || []).find((p) => p.id === id);
+    Store.data.pendingUsers = (Store.data.pendingUsers || []).filter((p) => p.id !== id);
+    Store.log("decline", "user", "", (pending && pending.name) || id);
+    Store.save();
+    UI.toast("Request declined");
+    this.renderSettings();
   },
 
   openSave() {

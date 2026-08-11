@@ -130,6 +130,28 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
 .pin-pad button:hover, .pin-pad button:focus-visible { border-color: var(--olive); background: var(--olive-soft); }
 .pin-pad .pad-action { font-size: 15px; font-weight: 600; color: var(--olive-2); }
 .demo-pins { font-size: 12px; color: var(--muted); text-align: center; margin: 18px 0 0; }
+.create-pin-btn {
+  width: 100%;
+  margin-top: 14px;
+  min-height: 56px;
+  font-size: 17px;
+}
+.how-runs {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin: 16px 0 0;
+  line-height: 1.45;
+}
+.signup-fields { margin-top: 18px; }
+.signup-fields .field input {
+  min-height: 56px;
+  font-size: 18px;
+  border-radius: 14px;
+  padding: 0 14px;
+}
+.signup-done { text-align: center; padding: 8px 0; }
+.signup-done p { font-size: 18px; font-family: var(--serif); margin: 8px 0 4px; }
 .lockout-banner, .pin-error {
   background: #f8e6e1;
   color: var(--bad);

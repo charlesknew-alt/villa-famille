@@ -8,7 +8,7 @@ const Store = {
     return {
       version: 1,
       house: { name: "The Family House", place: "La Croix-Valmer", region: "Var", lat: 43.2072, lon: 6.5694 },
-      users: [], owners: [], bookings: [], documents: [], restaurants: [], places: [], reviews: [], contacts: [],
+      users: [], pendingUsers: [], owners: [], bookings: [], documents: [], restaurants: [], places: [], reviews: [], contacts: [],
       maintenance: [], comments: [], recurring: [], expenses: [], inventory: [],
       checklistItems: [], checklistRecords: [], mapSpots: [], systems: {},
       ideas: [], announcements: [], activity: [], settings: {}
@@ -67,6 +67,7 @@ const Store = {
 
   normalize() {
     const d = this.data;
+    d.pendingUsers = d.pendingUsers || [];
     d.places = d.places || [];
     d.owners = d.owners || [];
     d.reviews = d.reviews || [];
