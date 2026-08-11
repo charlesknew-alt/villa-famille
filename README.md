@@ -8,7 +8,9 @@ No cloud database. No Supabase. No Google account. Open the site, enter a PIN, u
 
 Calendar, flights, PINs, maintenance and the rest are **one site**. The family will use a single web address later (GitHub Pages or a custom domain). This is not several apps.
 
-The GitHub repo is private and stays private. Until you pick hosting, open `index.html` on this computer.
+The live family address is **https://france.directestates.co.uk** (one site). The GitHub repo can stay private; the website at that address is what people open.
+
+DNS: a **CNAME** from `france` → `charlesknew-alt.github.io` on the `directestates.co.uk` domain.
 
 ## How to open this (not the GitHub file list)
 
@@ -42,7 +44,7 @@ PINs are stored as **SHA-256 + salt** in `data/house.json`. Raw PINs are never s
 - **Calendar** — the main feature. Green = free, blue = booked, red = blocked. Gold **H** = school holiday. Month / week / list. Add, edit, cancel stays. Conflict checks (same-day checkout / check-in is allowed). Who is at the house. The booking form opens easyJet / BA / Google Flights / Skyscanner for those exact dates.
 - **Maintenance** — report with photos/video, priorities, categories, contractor, comments, invoices. Workflow: Reported → Being reviewed → Assigned → In progress → Completed.
 - **House** — emergency numbers, shut-offs, site map, inventory, departure checklist, expenses, documents, contractors.
-- **Travel** — London (LHR / LGW / STN / LCY) to Nice, Marseille, Toulon. Big buttons open British Airways, easyJet, Google Flights and Skyscanner with your airports, dates and guest count. Drive times to La Croix-Valmer. No invented “live” fares — BA and easyJet have no free public price API. Optional API key in Settings if you later get Duffel / Amadeus / Kiwi.
+- **Travel** — Skyscanner search is built into the Travel page (and the booking form). Pick dates, search live prices on this site, then compare BA / easyJet / others. Airline buttons are still there if you want the carrier site.
 - **School holidays** — Seaford College, King Edward’s Woking and Greenfield Woking families have priority in typical 2025–2027 independent-school holidays. Admin can edit the dates in Settings.
 - **Local guide** — real well-known places near La Croix-Valmer and Gigaro. Stars, comments, photos, replies once the family adds them.
 - **Expenses** — GBP, who paid, receipts, personal vs shared. Shared bills split equally across the owners list. Settle up when reimbursed.

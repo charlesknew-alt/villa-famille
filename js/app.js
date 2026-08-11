@@ -316,9 +316,11 @@ const App = {
       "<span>These dates are a school holiday. I have picked other dates if I can, or I understand a school family / the house admin may need to confirm.</span></label>";
   },
 
-  costBoxHtml(est) {
-    const links = (est && est.links) || Flights.liveLinks("LGW", "TLN", UI.today(), UI.addDays(UI.today(), 7), 2);
-    let body = '<p>Open easyJet or British Airways to see today’s price for these dates.</p>';
+  costBoxHtml(est, arrival, departure) {
+    const out = arrival || UI.today();
+    const back = departure || UI.addDays(out, 7);
+    const links = (est && est.links) || Flights.liveLinks("LGW", "TLN", out, back, 2);
+    let body = '<p>Search live prices on Skyscanner below for these dates.</p>';
     if (est && est.live && est.lowPp) {
       body = "<p>About <b>£" + est.lowPp + (est.highPp && est.highPp !== est.lowPp ? "–£" + est.highPp : "") +
         "</b> return pp · about <b>£" + est.lowTotal +
@@ -327,8 +329,9 @@ const App = {
     }
     return '<div class="cost-box" id="bk-cost"><p class="guide-price">Flights for these dates</p>' +
       body +
+      Flights.widgetHtml({ from: "LGW", to: "TLN", date: out, back: back }) +
+      '<p class="muted">Or open the airline with the same dates.</p>' +
       Flights.buttonsHtml(links) +
-      '<p class="muted">Outbound ≈ arrival, return ≈ departure. Closest airport is often Toulon–Hyères (TLN); BA usually searches Nice (NCE).</p>' +
       '<p><a href="#travel">Open Travel</a></p></div>';
   },
 
@@ -533,7 +536,8 @@ const App = {
       document.getElementById("bk-ack-slot").innerHTML = this.holidayAckHtml(arrival, departure, status);
       Flights.estimateReturn(arrival, departure, guests).then((est) => {
         const box = document.getElementById("bk-cost");
-        if (box) box.outerHTML = this.costBoxHtml(est);
+        if (box) box.outerHTML = this.costBoxHtml(est, arrival, departure);
+        Flights.mountWidget();
       });
     };
     form.elements.arrival.onchange = refreshExtras;
@@ -951,14 +955,20 @@ const App = {
       "<p><b>" + f.from + " → " + f.to + "</b> · " + UI.esc(f.airline) +
       (f.direct ? ' <span class="badge-direct">Direct</span>' : "") + "</p><p class='muted'>Flight " + UI.mins(f.durationMin) + " · Drive " + f.drive.label + "</p></div>" : "";
     const view = document.getElementById("view");
+    const skyFrom = from || "LGW";
+    const skyTo = to || "TLN";
     view.innerHTML = this.head("Travel", "London to the house near La Croix-Valmer", "") +
-      '<p class="note-sample">There is no free airline price API in this app, so we do not invent fares. Tap the big buttons — they open British Airways, easyJet, Google Flights or Skyscanner with these airports and dates already filled in.</p>' +
-      Flights.buttonsHtml(links) +
+      '<div class="card sky-card"><h3>Live prices on Skyscanner</h3>' +
+      '<p class="muted">Search sits on this page. Change the dates below, then tap Search live prices. Results open from Skyscanner (BA, easyJet and others).</p>' +
+      Flights.widgetHtml({ from: skyFrom, to: skyTo, date: date, back: back }) +
+      "</div>" +
       '<div class="filters"><label class="field"><span>Outbound</span><input id="tr-date" type="date" value="' + date + '"></label>' +
       '<label class="field"><span>Return</span><input id="tr-back" type="date" value="' + back + '"></label>' +
       '<label class="field"><span>Guests</span><input id="tr-guests" type="number" min="1" max="9" value="' + guests + '"></label>' +
       this.select("tr-from", [["","All London airports"],["LHR","Heathrow"],["LGW","Gatwick"],["STN","Stansted"],["LCY","London City"]], from) +
       this.select("tr-to", [["","All arrivals"],["NCE","Nice"],["MRS","Marseille"],["TLN","Toulon–Hyères"]], to) + "</div>" +
+      '<p class="muted">Prefer the airline site?</p>' +
+      Flights.buttonsHtml(links) +
       '<div class="grid highlights">' + card("Live fare", "cheap", hl.cheapest) + card("Fastest door to door", "fast", hl.fastest) + card("Most convenient", "easy", hl.convenient) + "</div>" +
       '<div class="grid cards" style="margin-top:16px">' + fares.map((f) =>
         '<div class="card route-card"><h3>' + f.from + " → " + f.to + "</h3><p>" + UI.esc(f.fromName) + " to " + UI.esc(f.toName) + "</p>" +
@@ -988,6 +998,7 @@ const App = {
     document.getElementById("tr-from").onchange = apply;
     document.getElementById("tr-to").onchange = apply;
     document.getElementById("tr-guests").onchange = apply;
+    Flights.mountWidget();
     this.afterRender();
   },
 
@@ -1308,7 +1319,7 @@ const App = {
     const view = document.getElementById("view");
     view.innerHTML = this.head("Settings", "PINs, backup, and activity") +
       '<div class="card"><h3>One house, one address</h3>' +
-      '<p>Calendar, flights, PINs and maintenance are <b>one website</b> — one address later (GitHub Pages or a custom domain). Not many apps.</p></div>' +
+      '<p>Calendar, flights, PINs and maintenance are <b>one website</b>: <a href="https://france.directestates.co.uk">france.directestates.co.uk</a>.</p></div>' +
       '<div class="card" style="margin-top:16px"><h3>How this runs, and where the calendar lives</h3>' +
       '<p>There is no server on this PC. <b>index.html</b> is a website file — open it in a browser. The GitHub page is only the code locker, not the live house.</p>' +
       '<p>The real calendar, bookings, people, and the rest live in <b>data/house.json</b> on GitHub. While you use the site, new bookings first save as a <b>draft in this browser</b>. Then download that file and put it back on GitHub so the family at home sees the same dates. Spreadsheet copies are in <b>data/csv/</b>.</p>' +
