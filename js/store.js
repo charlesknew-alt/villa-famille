@@ -1,4 +1,4 @@
-const Store = {
+window.Store = {
   key: "tfh-draft-v3",
   usersKey: "tfh-users",
   removedKey: "tfh-removed",
@@ -258,7 +258,7 @@ const Store = {
     }
     this._remoteUsers = [];
     let remote = null;
-    if (window.FamilySync) {
+    if (typeof FamilySync !== "undefined") {
       await FamilySync.init();
       remote = await FamilySync.pull();
       if (remote) {
@@ -282,17 +282,9 @@ const Store = {
       this.data.settings.houseCodeSalt = repoHouse.salt;
       this.data.settings.houseCodeHash = repoHouse.hash;
     }
-    const extraPeople = (this.data.users || []).filter((u) => u && u.id && u.id !== "u-admin");
-    const localDraftHasFamily = !!(draft && (
-      (draft.bookings || []).length ||
-      (draft.reviews || []).length ||
-      (draft.expenses || []).length ||
-      (draft.maintenance || []).length ||
-      (draft.users || []).some((u) => u && u.id && u.id !== "u-admin")
-    ));
-    if (keptUsers.length || extraPeople.length || localDraftHasFamily) {
-      await this.pushRemote();
-    }
+    // Always publish whatever this browser knows. Admin-only repo data is not
+    // enough for phones — family PINs/stays live in the cloud blob.
+    this.lastPublishOk = await this.pushRemote();
     return this.data;
   },
 
@@ -335,13 +327,14 @@ const Store = {
   },
 
   async pullRemote() {
-    if (!window.FamilySync) return;
+    if (typeof FamilySync === "undefined") return null;
     const remote = await FamilySync.pull();
-    if (!remote) return;
+    if (!remote) return null;
     this._remoteUsers = remote.users || [];
     this.applyFamilySlice(remote, { applyRemoved: true });
     this.data.users = this.mergeUsers(this.data.users, this._remoteUsers, this.collectLocalUsers());
     this.persistUsers();
+    return remote;
   },
 
   queueRemotePush() {
@@ -352,7 +345,7 @@ const Store = {
   },
 
   async pushRemote() {
-    if (!window.FamilySync) return false;
+    if (typeof FamilySync === "undefined") return false;
     if (this._pushing) {
       this._pushAgain = true;
       return new Promise((resolve) => {
@@ -363,8 +356,11 @@ const Store = {
     let ok = false;
     try {
       ok = await this._pushRemoteOnce();
-    } catch (_) {
+    } catch (err) {
       ok = false;
+      if (window.FamilySync) {
+        FamilySync.lastError = "pushRemote " + String(err && err.message ? err.message : err);
+      }
     } finally {
       this._pushing = false;
       if (this._pushAgain) {
@@ -401,7 +397,9 @@ const Store = {
     if (ok) {
       this._remoteUsers = merged.users;
       this.data.users = this.mergeUsers(this.data.users, merged.users);
+      this.applyFamilySlice(merged, { applyRemoved: false });
       this.persistUsers();
+      this.writeLocalDraft();
     }
     return ok;
   },
@@ -840,3 +838,5 @@ const Store = {
     this.clearDraft();
   }
 };
+
+var Store = window.Store;

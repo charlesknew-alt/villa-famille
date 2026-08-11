@@ -103,7 +103,8 @@ const Auth = {
       Store.rememberUser(user);
       Store.log("login", "user", user.id, user.name + " signed in");
       Store.save();
-      Store.pushRemote().catch(() => {});
+      // Await so a computer login actually publishes local PINs/stays to phones.
+      try { await Store.pushRemote(); } catch (_) { /* offline */ }
       return { ok: true, user };
     }
     const fail = this.recordFail();

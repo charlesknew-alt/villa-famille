@@ -143,6 +143,14 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0 0 8px; }
   margin: 16px 0 0;
   line-height: 1.45;
 }
+.sync-status {
+  font-size: 12px;
+  color: var(--olive-2);
+  text-align: center;
+  margin: 10px 0 0;
+  line-height: 1.4;
+  min-height: 1.4em;
+}
 .family-fieldset { border: 0; padding: 0; margin: 0 0 8px; }
 .family-fieldset legend { font-weight: 700; margin-bottom: 8px; }
 .family-pick { display: grid; grid-template-columns: 1fr; gap: 8px; }
