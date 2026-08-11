@@ -39,7 +39,7 @@ const App = {
 
   syncSaveChip() {
     const btn = document.getElementById("save-banner-btn");
-    if (btn) btn.hidden = !Auth.isAdmin() || !Store.dirty;
+    if (btn) btn.hidden = !Auth.isAdmin();
   },
 
   showLogin() {
@@ -419,6 +419,7 @@ const App = {
   },
 
   dirtyBar() {
+    if (!Auth.isAdmin()) return "";
     return "";
   },
 
@@ -1854,7 +1855,8 @@ const App = {
     view.innerHTML = this.head("Settings", admin ? "Family PINs, backup, and activity" : "Your settings") +
       (admin ? this.pinAdmin() + this.houseCodeNote() : "") +
       '<div class="card" style="margin-top:16px"><h3>One house, one address</h3>' +
-      '<p>Calendar, flights, PINs and maintenance are <b>one website</b>: <a href="https://france.directestates.co.uk">france.directestates.co.uk</a>.</p></div>' +
+      '<p>Calendar, flights, PINs and maintenance are <b>one website</b>: <a href="https://france.directestates.co.uk">france.directestates.co.uk</a>.</p>' +
+      (admin ? "" : "<p>Your dates and PIN save on their own. You do not need GitHub.</p>") + "</div>" +
       (admin ? '<div class="card" style="margin-top:16px"><h3>How this runs, and where the calendar lives</h3>' +
       '<p>There is no server on this PC. <b>index.html</b> is a website file — open it in a browser. The GitHub page is only the code locker, not the live house.</p>' +
       '<p>The real calendar, bookings, people, and the rest live in <b>data/house.json</b> on GitHub. While you use the site, new bookings first save as a <b>draft in this browser</b>. Then download that file and put it back on GitHub so the family at home sees the same dates. Spreadsheet copies are in <b>data/csv/</b>.</p>' +
